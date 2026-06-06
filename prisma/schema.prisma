@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(SOLICITANTE)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketsAbertos    Ticket[]     @relation("Solicitante")
+  ticketsAtribuidos Ticket[]     @relation("Agente")
+  comentarios       Comment[]
+  anexos            Attachment[]
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  AGENTE
+  SOLICITANTE
+}
+
+model Cliente {
+  id           String        @id @default(cuid())
+  nome         String        @unique
+  cor          String        @default("#6366f1")
+  localizacoes Localizacao[]
+  tickets      Ticket[]
+  createdAt    DateTime      @default(now())
+}
+
+model Localizacao {
+  id        String   @id @default(cuid())
+  nome      String
+  uf        String
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  tickets   Ticket[]
+
+  @@unique([nome, uf, clienteId])
+}
+
+model Ticket {
+  id            String     @id @default(cuid())
+  numero        Int        @unique
+  descricao     String     @default("")
+  status        String     @default("CHAMADO_REFRIG")
+  prioridade    Prioridade @default(MEDIA)
+  ticketExterno String     @default("")
+  ovNumero      String     @default("")
+  osNumero      String     @default("")
+  valorServico  Float      @default(0)
+  contatoNome   String     @default("")
+
+  clienteId     String
+  cliente       Cliente     @relation(fields: [clienteId], references: [id])
+
+  localizacaoId String
+  localizacao   Localizacao @relation(fields: [localizacaoId], references: [id])
+
+  solicitanteId String
+  solicitante   User        @relation("Solicitante", fields: [solicitanteId], references: [id])
+
+  agenteId String?
+  agente   User?   @relation("Agente", fields: [agenteId], references: [id])
+
+  comentarios Comment[]
+  anexos      Attachment[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvidoAt DateTime?
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  ticketId     String
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  texto     String
+  interno   Boolean  @default(false)
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  autorId   String
+  autor     User     @relation(fields: [autorId], references: [id])
+  createdAt DateTime @default(now())
+}
