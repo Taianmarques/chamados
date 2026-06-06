@@ -3,9 +3,9 @@
 # ============================================================
 # EDITE APENAS ESTAS 3 LINHAS ANTES DE RODAR
 # ============================================================
-GITHUB_URL="https://github.com/SEU_USUARIO/chamados.git"
-AUTH_SECRET="gere-uma-chave-em-https://generate-secret.vercel.app/32"
-IP_OU_DOMINIO="http://SEU_IP"
+GITHUB_URL="https://github.com/Taianmarques/chamados.git"
+AUTH_SECRET="ce4a5d67015176edace12ccaf520e6b2501214bed60e1d01491344bb3680847f"
+IP_OU_DOMINIO="http://212.85.1.162"
 # ============================================================
 
 set -e
