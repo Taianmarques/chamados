@@ -25,7 +25,7 @@ type Ticket = {
     id: string; originalName: string; mimeType: string; size: number; createdAt: string;
     uploadedBy: { name: string };
   }[];
-  createdAt: string; updatedAt: string;
+  createdAt: string; updatedAt: string; resolvidoAt: string | null;
 };
 
 interface Props {
@@ -48,7 +48,9 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
   const [editOv, setEditOv] = useState(ticket.ovNumero);
   const [editOs, setEditOs] = useState(ticket.osNumero);
 
-  const isAgente = ["AGENTE", "ADMIN", "SUPERVISOR"].includes(currentUser.role);
+  const isAgente   = ["AGENTE", "ADMIN", "SUPERVISOR"].includes(currentUser.role);
+  const isGestor   = ["ADMIN", "SUPERVISOR"].includes(currentUser.role);
+  const resolvido  = !!ticket.resolvidoAt;
   const titulo = tituloTicket(ticket);
 
   async function salvarEdicao() {
@@ -91,6 +93,20 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
     if (res.ok) {
       const updated = await res.json();
       setTicket((t) => ({ ...t, ...updated }));
+    }
+    setSaving(false);
+  }
+
+  async function marcarResolvido(resolver: boolean) {
+    setSaving(true);
+    const res = await fetch(`/api/tickets/${ticket.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolvidoAt: resolver ? new Date().toISOString() : null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTicket((t) => ({ ...t, resolvidoAt: updated.resolvidoAt }));
     }
     setSaving(false);
   }
@@ -486,6 +502,42 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {isGestor && (
+                <div className="pt-2 border-t border-gray-100">
+                  {resolvido ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                        <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-green-700">Resolvido</p>
+                          <p className="text-xs text-green-600">{new Date(ticket.resolvidoAt!).toLocaleString("pt-BR")}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => marcarResolvido(false)}
+                        disabled={saving}
+                        className="w-full px-3 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      >
+                        Reabrir chamado
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => marcarResolvido(true)}
+                      disabled={saving}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold rounded-xl transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Marcar como Resolvido
+                    </button>
+                  )}
                 </div>
               )}
 

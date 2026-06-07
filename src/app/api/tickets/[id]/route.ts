@@ -46,6 +46,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.osNumero !== undefined) data.osNumero = body.osNumero;
   if (body.valorServico !== undefined) data.valorServico = Number(body.valorServico);
   if (body.contatoNome !== undefined) data.contatoNome = body.contatoNome;
+  if (body.resolvidoAt !== undefined) data.resolvidoAt = body.resolvidoAt ? new Date(body.resolvidoAt) : null;
 
   const ticket = await prisma.ticket.update({
     where: { id },
