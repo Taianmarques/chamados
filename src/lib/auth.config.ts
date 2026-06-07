@@ -7,23 +7,10 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const role = (auth?.user as { role?: string })?.role;
-      const isSolicitante = role === "SOLICITANTE";
       const isAuthPage = nextUrl.pathname.startsWith("/login");
-      const isPortal = nextUrl.pathname.startsWith("/portal");
 
-      if (isAuthPage) {
-        if (!isLoggedIn) return true;
-        return Response.redirect(new URL(isSolicitante ? "/portal" : "/board", nextUrl));
-      }
-
+      if (isAuthPage) return isLoggedIn ? Response.redirect(new URL("/board", nextUrl)) : true;
       if (!isLoggedIn) return Response.redirect(new URL("/login", nextUrl));
-
-      // SOLICITANTE só pode acessar /portal
-      if (isSolicitante && !isPortal) {
-        return Response.redirect(new URL("/portal", nextUrl));
-      }
-
       return true;
     },
     jwt({ token, user }) {

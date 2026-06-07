@@ -5,6 +5,7 @@ import BoardClient from "./BoardClient";
 export default async function BoardPage() {
   const session = await auth();
   if (!session) redirect("/login");
+  if ((session.user as { role: string }).role === "SOLICITANTE") redirect("/portal");
 
   return (
     <BoardClient
