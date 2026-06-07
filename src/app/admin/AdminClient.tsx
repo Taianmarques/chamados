@@ -38,6 +38,11 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
   const [novoUser, setNovoUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", clienteId: "", ufFiltro: "", localizacaoId: "" });
   const [savingUser, setSavingUser] = useState(false);
 
+  // Cascata empresa → UF → localização
+  const clienteSel = clientes.find((c) => c.id === novoUser.clienteId) ?? null;
+  const ufsDisponiveis = [...new Set((clienteSel?.localizacoes ?? []).map((l) => l.uf))].sort();
+  const locsFiltradas = (clienteSel?.localizacoes ?? []).filter((l) => !novoUser.ufFiltro || l.uf === novoUser.ufFiltro);
+
   // Form novo cliente
   const [novoCliente, setNovoCliente] = useState({ nome: "", cor: "#6366f1" });
   const [savingCliente, setSavingCliente] = useState(false);
@@ -140,57 +145,52 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
-                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value, clienteId: "" }))}
+                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value, clienteId: "", ufFiltro: "", localizacaoId: "" }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>
                 </div>
-                {novoUser.role === "SOLICITANTE" && (() => {
-                  const clienteSel = clientes.find((c) => c.id === novoUser.clienteId);
-                  const ufs = [...new Set((clienteSel?.localizacoes ?? []).map((l) => l.uf))].sort();
-                  const locsFiltradas = (clienteSel?.localizacoes ?? []).filter((l) => !novoUser.ufFiltro || l.uf === novoUser.ufFiltro);
-                  return (
-                    <>
-                      <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Empresa</label>
-                        <select
-                          value={novoUser.clienteId}
-                          onChange={(e) => setNovoUser((u) => ({ ...u, clienteId: e.target.value, ufFiltro: "", localizacaoId: "" }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Selecione a empresa</option>
-                          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </select>
-                      </div>
-                      {clienteSel && (
-                        <>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Região (UF)</label>
-                            <select
-                              value={novoUser.ufFiltro}
-                              onChange={(e) => setNovoUser((u) => ({ ...u, ufFiltro: e.target.value, localizacaoId: "" }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                              <option value="">Todas as regiões</option>
-                              {ufs.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Localização responsável</label>
-                            <select
-                              value={novoUser.localizacaoId}
-                              onChange={(e) => setNovoUser((u) => ({ ...u, localizacaoId: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                              <option value="">Sem localização específica</option>
-                              {locsFiltradas.map((l) => <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>)}
-                            </select>
-                          </div>
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
+                {novoUser.role === "SOLICITANTE" && (
+                  <>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Empresa</label>
+                      <select
+                        value={novoUser.clienteId}
+                        onChange={(e) => setNovoUser((u) => ({ ...u, clienteId: e.target.value, ufFiltro: "", localizacaoId: "" }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Selecione a empresa</option>
+                        {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                      </select>
+                    </div>
+                    {clienteSel && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Região (UF)</label>
+                          <select
+                            value={novoUser.ufFiltro}
+                            onChange={(e) => setNovoUser((u) => ({ ...u, ufFiltro: e.target.value, localizacaoId: "" }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Todas as regiões</option>
+                            {ufsDisponiveis.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Localização responsável</label>
+                          <select
+                            value={novoUser.localizacaoId}
+                            onChange={(e) => setNovoUser((u) => ({ ...u, localizacaoId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Sem localização específica</option>
+                            {locsFiltradas.map((l) => <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>)}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
                 <div className="col-span-2">
                   <button type="submit" disabled={savingUser}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
