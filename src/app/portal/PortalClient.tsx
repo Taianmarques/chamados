@@ -12,6 +12,11 @@ type Ticket = {
   localizacao: Localizacao; agente: { name: string } | null; createdAt: string; resolvidoAt: string | null;
 };
 
+function statusPortal(ticket: Ticket) {
+  if (ticket.resolvidoAt) return { label: "Resolvido", bg: "bg-green-100", text: "text-green-700" };
+  return STATUS_PORTAL[ticket.status] ?? { label: ticket.status, bg: "bg-gray-100", text: "text-gray-600" };
+}
+
 interface Props {
   userName: string;
   cliente: Cliente | null;
@@ -64,8 +69,8 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
   });
   const [erro, setErro] = useState("");
 
-  const faturados = tickets.filter((t) => ["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
-  const emAberto  = tickets.filter((t) => !["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
+  const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
+  const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
 
   async function abrirChamado(e: React.FormEvent) {
     e.preventDefault();
@@ -190,7 +195,7 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {tickets.map((t) => {
-                  const st = STATUS_PORTAL[t.status];
+                  const st = statusPortal(t);
                   const pr = PRIORIDADE_CONFIG[t.prioridade];
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 transition-colors">
@@ -210,9 +215,12 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${st?.bg} ${st?.text}`}>
-                          {st?.label ?? t.status}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${st.bg} ${st.text}`}>
+                          {st.label}
                         </span>
+                        {t.resolvidoAt && (
+                          <p className="text-xs text-gray-400 mt-0.5">{formatDate(t.resolvidoAt)}</p>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(t.createdAt)}</td>
                       <td className="px-5 py-3.5 text-gray-500">{t.agente?.name ?? "—"}</td>
