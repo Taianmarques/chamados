@@ -10,6 +10,12 @@ git pull origin main
 echo "==> Instalando dependências..."
 npm install
 
+echo "==> Aplicando migrações do banco..."
+npx prisma migrate deploy
+
+echo "==> Gerando cliente Prisma..."
+npx prisma generate
+
 echo "==> Buildando o projeto..."
 npm run build
 
