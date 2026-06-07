@@ -112,3 +112,12 @@ model Comment {
   autor     User     @relation(fields: [autorId], references: [id])
   createdAt DateTime @default(now())
 }
+
+model LoginConfig {
+  id          String   @id @default(cuid())
+  logoUrl     String   @default("")
+  titulo      String   @default("Sistema de Chamados")
+  descricao   String   @default("Acesso interno")
+  corPrimaria String   @default("#6366f1")
+  updatedAt   DateTime @updatedAt
+}

@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+interface LoginConfig {
+  logoUrl: string;
+  titulo: string;
+  descricao: string;
+  corPrimaria: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +17,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState<LoginConfig | null>(null);
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  async function fetchConfig() {
+    try {
+      const response = await fetch("/api/config/login");
+      const data = await response.json();
+      setConfig(data);
+    } catch (error) {
+      console.error("Erro ao buscar configurações:", error);
+      setConfig({
+        logoUrl: "",
+        titulo: "Sistema de Chamados",
+        descricao: "Acesso interno",
+        corPrimaria: "#6366f1",
+      });
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,15 +60,34 @@ export default function LoginPage() {
     }
   }
 
+  if (!config) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">Carregando...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600 text-white text-xl font-bold mb-4">
-            S
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900">Sistema de Chamados</h1>
-          <p className="text-sm text-gray-500 mt-1">Acesso interno</p>
+          {config.logoUrl ? (
+            <img
+              src={config.logoUrl}
+              alt="Logo"
+              className="inline-block w-12 h-12 mb-4 rounded-xl object-contain"
+            />
+          ) : (
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl text-white text-xl font-bold mb-4"
+              style={{ backgroundColor: config.corPrimaria }}
+            >
+              S
+            </div>
+          )}
+          <h1 className="text-xl font-semibold text-gray-900">{config.titulo}</h1>
+          <p className="text-sm text-gray-500 mt-1">{config.descricao}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -51,8 +98,11 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
               placeholder="seu@email.com"
+              style={{
+                focusRingColor: config.corPrimaria,
+              }}
             />
           </div>
           <div>
@@ -62,8 +112,11 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
               placeholder="••••••••"
+              style={{
+                focusRingColor: config.corPrimaria,
+              }}
             />
           </div>
 
@@ -76,7 +129,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors"
+            className="w-full py-2.5 px-4 text-white text-sm font-medium rounded-lg transition-colors"
+            style={{
+              backgroundColor: config.corPrimaria,
+            }}
+            onMouseEnter={(e) => {
+              const element = e.currentTarget as HTMLButtonElement;
+              element.style.filter = "brightness(1.1)";
+            }}
+            onMouseLeave={(e) => {
+              const element = e.currentTarget as HTMLButtonElement;
+              element.style.filter = "brightness(1)";
+            }}
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
