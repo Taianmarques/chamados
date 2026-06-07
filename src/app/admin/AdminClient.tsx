@@ -4,7 +4,7 @@ import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import LoginConfigForm from "@/components/admin/LoginConfigForm";
 
-type Usuario = { id: string; name: string; email: string; role: string; ativo: boolean; createdAt: string };
+type Usuario = { id: string; name: string; email: string; role: string; ativo: boolean; createdAt: string; clienteId: string | null; cliente: { id: string; nome: string } | null };
 type Localizacao = { id: string; nome: string; uf: string };
 type Cliente = { id: string; nome: string; cor: string; localizacoes: Localizacao[] };
 
@@ -31,7 +31,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
   const [clienteExpandido, setClienteExpandido] = useState<string | null>(null);
 
   // Form novo usuário
-  const [novoUser, setNovoUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE" });
+  const [novoUser, setNovoUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", clienteId: "" });
   const [savingUser, setSavingUser] = useState(false);
 
   // Form novo cliente
@@ -53,7 +53,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
     if (res.ok) {
       const user = await res.json();
       setUsuarios((u) => [...u, user].sort((a, b) => a.name.localeCompare(b.name)));
-      setNovoUser({ name: "", email: "", password: "", role: "SOLICITANTE" });
+      setNovoUser({ name: "", email: "", password: "", role: "SOLICITANTE", clienteId: "" });
     }
     setSavingUser(false);
   }
@@ -136,11 +136,21 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
-                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value }))}
+                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value, clienteId: "" }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>
                 </div>
+                {novoUser.role === "SOLICITANTE" && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Empresa (cliente vinculado)</label>
+                    <select value={novoUser.clienteId} onChange={(e) => setNovoUser((u) => ({ ...u, clienteId: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                      <option value="">Sem vínculo</option>
+                      {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="col-span-2">
                   <button type="submit" disabled={savingUser}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
@@ -157,6 +167,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Nome</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Perfil</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Empresa</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
                   </tr>
                 </thead>
@@ -168,6 +179,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                       <td className="px-4 py-3">
                         <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{ROLE_LABELS[u.role]}</span>
                       </td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">{u.cliente?.nome ?? <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.ativo ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                           {u.ativo ? "Ativo" : "Inativo"}

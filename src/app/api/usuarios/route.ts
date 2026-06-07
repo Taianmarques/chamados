@@ -13,7 +13,7 @@ export async function GET() {
   }
 
   const usuarios = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true, clienteId: true, cliente: { select: { id: true, nome: true } } },
     orderBy: { name: "asc" },
   });
 
@@ -38,8 +38,9 @@ export async function POST(req: NextRequest) {
       email: body.email,
       password: hash,
       role: body.role ?? "SOLICITANTE",
+      clienteId: body.clienteId || null,
     },
-    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true, clienteId: true, cliente: { select: { id: true, nome: true } } },
   });
 
   return NextResponse.json(novoUsuario, { status: 201 });

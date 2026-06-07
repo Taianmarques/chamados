@@ -21,7 +21,9 @@ export default function Navbar({ userName, userRole }: Props) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const links = [
+  const links = userRole === "SOLICITANTE" ? [
+    { href: "/portal", label: "Meus Chamados", live: false },
+  ] : [
     { href: "/board", label: "Board", live: false },
     ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/dashboard", label: "Dashboard", live: false }] : []),
     ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/relatorios", label: "Relatórios", live: false }] : []),
