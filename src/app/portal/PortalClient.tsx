@@ -15,6 +15,7 @@ type Ticket = {
 interface Props {
   userName: string;
   cliente: Cliente | null;
+  localizacaoVinculada: Localizacao | null;
   tickets: Ticket[];
 }
 
@@ -49,14 +50,14 @@ function formatDate(str: string) {
   return new Date(str).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export default function PortalClient({ userName, cliente, tickets: init }: Props) {
+export default function PortalClient({ userName, cliente, localizacaoVinculada, tickets: init }: Props) {
   const router = useRouter();
   const [tickets, setTickets] = useState(init);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     tipo: TIPOS[0].status,
-    localizacaoId: "",
+    localizacaoId: localizacaoVinculada?.id ?? "",
     prioridade: "MEDIA",
     descricao: "",
     contatoNome: "",
@@ -252,17 +253,27 @@ export default function PortalClient({ userName, cliente, tickets: init }: Props
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Localização</label>
-                <select
-                  value={form.localizacaoId}
-                  onChange={(e) => setForm((f) => ({ ...f, localizacaoId: e.target.value }))}
-                  required
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Selecione a unidade</option>
-                  {cliente?.localizacoes.map((l) => (
-                    <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>
-                  ))}
-                </select>
+                {localizacaoVinculada ? (
+                  <div className="flex items-center gap-2 px-3 py-2.5 border border-indigo-200 bg-indigo-50 rounded-xl text-sm text-indigo-800 font-medium">
+                    <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {localizacaoVinculada.uf} — {localizacaoVinculada.nome}
+                  </div>
+                ) : (
+                  <select
+                    value={form.localizacaoId}
+                    onChange={(e) => setForm((f) => ({ ...f, localizacaoId: e.target.value }))}
+                    required
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Selecione a unidade</option>
+                    {cliente?.localizacoes.map((l) => (
+                      <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>

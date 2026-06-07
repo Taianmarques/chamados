@@ -13,7 +13,11 @@ export async function GET() {
   }
 
   const usuarios = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true, clienteId: true, cliente: { select: { id: true, nome: true } } },
+    select: {
+      id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+      clienteId: true, cliente: { select: { id: true, nome: true } },
+      localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -39,8 +43,13 @@ export async function POST(req: NextRequest) {
       password: hash,
       role: body.role ?? "SOLICITANTE",
       clienteId: body.clienteId || null,
+      localizacaoId: body.localizacaoId || null,
     },
-    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true, clienteId: true, cliente: { select: { id: true, nome: true } } },
+    select: {
+      id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+      clienteId: true, cliente: { select: { id: true, nome: true } },
+      localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
+    },
   });
 
   return NextResponse.json(novoUsuario, { status: 201 });

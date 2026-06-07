@@ -14,6 +14,7 @@ export default async function PortalPage() {
     where: { id: sessionUser.id },
     include: {
       cliente: { include: { localizacoes: { orderBy: [{ uf: "asc" }, { nome: "asc" }] } } },
+      localizacao: true,
     },
   });
 
@@ -30,6 +31,7 @@ export default async function PortalPage() {
     <PortalClient
       userName={sessionUser.name}
       cliente={user?.cliente ?? null}
+      localizacaoVinculada={user?.localizacao ?? null}
       tickets={JSON.parse(JSON.stringify(tickets))}
     />
   );

@@ -14,8 +14,10 @@ model User {
   password  String
   role      Role     @default(SOLICITANTE)
   ativo     Boolean  @default(true)
-  clienteId String?
-  cliente   Cliente? @relation("UsuariosCliente", fields: [clienteId], references: [id])
+  clienteId     String?
+  cliente       Cliente?     @relation("UsuariosCliente", fields: [clienteId], references: [id])
+  localizacaoId String?
+  localizacao   Localizacao? @relation("UsuariosLocalizacao", fields: [localizacaoId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -49,6 +51,7 @@ model Localizacao {
   clienteId String
   cliente   Cliente  @relation(fields: [clienteId], references: [id])
   tickets   Ticket[]
+  usuarios  User[]   @relation("UsuariosLocalizacao")
 
   @@unique([nome, uf, clienteId])
 }

@@ -11,7 +11,11 @@ export default async function AdminPage() {
   if (user.role !== "ADMIN") redirect("/board");
 
   const usuarios = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, ativo: true, createdAt: true },
+    select: {
+      id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+      clienteId: true, cliente: { select: { id: true, nome: true } },
+      localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
+    },
     orderBy: { name: "asc" },
   });
 
