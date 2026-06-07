@@ -22,11 +22,12 @@ export default function Navbar({ userName, userRole }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
-    { href: "/board", label: "Board" },
-    ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/dashboard", label: "Dashboard" }] : []),
-    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/relatorios", label: "Relatórios" }] : []),
-    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/importar", label: "Importar" }] : []),
-    ...(userRole === "ADMIN" ? [{ href: "/admin", label: "Admin" }] : []),
+    { href: "/board", label: "Board", live: false },
+    ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/dashboard", label: "Dashboard", live: false }] : []),
+    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/relatorios", label: "Relatórios", live: false }] : []),
+    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/importar", label: "Importar", live: false }] : []),
+    ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/tv", label: "Ao Vivo", live: true }] : []),
+    ...(userRole === "ADMIN" ? [{ href: "/admin", label: "Admin", live: false }] : []),
   ];
 
   return (
@@ -43,12 +44,19 @@ export default function Navbar({ userName, userRole }: Props) {
           <Link
             key={link.href}
             href={link.href}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              pathname.startsWith(link.href)
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              link.live
+                ? pathname.startsWith(link.href)
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                : pathname.startsWith(link.href)
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
             }`}
           >
+            {link.live && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
             {link.label}
           </Link>
         ))}
