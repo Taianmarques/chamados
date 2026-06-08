@@ -18,10 +18,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const buffer = await readFile(filePath).catch(() => null);
   if (!buffer) return NextResponse.json({ error: "Arquivo não encontrado no disco" }, { status: 404 });
 
+  const inline = anexo.mimeType.startsWith("image/") || anexo.mimeType.startsWith("video/");
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": anexo.mimeType,
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(anexo.originalName)}"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(anexo.originalName)}"`,
     },
   });
 }

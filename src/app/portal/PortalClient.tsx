@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PIPELINE_COLUMNS } from "@/store/board";
@@ -36,6 +36,9 @@ PIPELINE_COLUMNS.forEach((c) => {
   };
   STATUS_PORTAL[c.id] = map[c.grupo as keyof typeof map];
 });
+// Sobrescritas: etapas que requerem ação do cliente
+STATUS_PORTAL["ORC_ENVIADO_AGUARD"] = { label: "Ag. sua aprovação", bg: "bg-yellow-100", text: "text-yellow-800" };
+STATUS_PORTAL["FATURADO_AGUARD"]    = { label: "Ag. pagamento",     bg: "bg-sky-100",    text: "text-sky-700" };
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   BAIXA:   { label: "Baixa",  bg: "bg-gray-100",   text: "text-gray-600" },
@@ -58,8 +61,12 @@ function formatDate(str: string) {
 export default function PortalClient({ userName, cliente, localizacaoVinculada, tickets: init }: Props) {
   const router = useRouter();
   const [tickets, setTickets] = useState(init);
+  const prevTicketsRef = useRef(init);
+  const [toasts, setToasts] = useState<{ key: number; numero: number; label: string; bg: string; text: string }[]>([]);
+  const [liveConnected, setLiveConnected] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingStep, setSavingStep] = useState("");
   const [form, setForm] = useState({
     tipo: TIPOS[0].status,
     localizacaoId: localizacaoVinculada?.id ?? "",
@@ -67,10 +74,66 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
     descricao: "",
     contatoNome: "",
   });
+  const [files, setFiles] = useState<File[]>([]);
   const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    setLiveConnected(true);
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await fetch("/api/tickets");
+        if (!res.ok) return;
+        const incoming: Ticket[] = await res.json();
+        const prev = prevTicketsRef.current;
+
+        for (const t of incoming) {
+          const old = prev.find((p) => p.id === t.id);
+          if (!old) continue;
+          if (old.status === t.status && old.resolvidoAt === t.resolvidoAt) continue;
+
+          const st = statusPortal(t);
+          const key = Date.now() + Math.random();
+          setToasts((prev) => [...prev, { key, numero: t.numero, label: st.label, bg: st.bg, text: st.text }]);
+          setTimeout(() => setToasts((prev) => prev.filter((x) => x.key !== key)), 6000);
+        }
+
+        prevTicketsRef.current = incoming;
+        setTickets(incoming);
+      } catch { /* falha de rede, tenta no próximo ciclo */ }
+    }, 5000);
+
+    return () => { clearInterval(intervalId); setLiveConnected(false); };
+  }, []);
 
   const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
   const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
+
+  function adicionarArquivos(novos: FileList | null) {
+    if (!novos) return;
+    const MAX_SIZE = 50 * 1024 * 1024;
+    const permitidos = ["image/", "video/"];
+    const validos: File[] = [];
+    for (const f of Array.from(novos)) {
+      if (!permitidos.some((p) => f.type.startsWith(p))) {
+        setErro("Apenas imagens e vídeos são permitidos."); return;
+      }
+      if (f.size > MAX_SIZE) {
+        setErro(`"${f.name}" excede o limite de 50 MB.`); return;
+      }
+      validos.push(f);
+    }
+    setErro("");
+    setFiles((prev) => {
+      const combined = [...prev, ...validos];
+      if (combined.length > 5) { setErro("Máximo de 5 arquivos por chamado."); return prev; }
+      return combined;
+    });
+  }
+
+  function removerArquivo(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function abrirChamado(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +142,7 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
     if (!form.descricao.trim()) { setErro("Descreva o problema."); return; }
     setErro("");
     setSaving(true);
+    setSavingStep("Criando chamado...");
 
     const res = await fetch("/api/tickets", {
       method: "POST",
@@ -93,17 +157,30 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
       }),
     });
 
-    if (res.ok) {
-      const novo = await res.json();
-      setTickets((t) => [novo, ...t]);
-      setModalOpen(false);
-      setForm({ tipo: TIPOS[0].status, localizacaoId: "", prioridade: "MEDIA", descricao: "", contatoNome: "" });
-      router.refresh();
-    } else {
+    if (!res.ok) {
       const data = await res.json();
       setErro(data.error ?? "Erro ao abrir chamado.");
+      setSaving(false);
+      setSavingStep("");
+      return;
     }
+
+    const novo = await res.json();
+
+    for (let i = 0; i < files.length; i++) {
+      setSavingStep(`Enviando arquivo ${i + 1} de ${files.length}...`);
+      const fd = new FormData();
+      fd.append("file", files[i]);
+      await fetch(`/api/tickets/${novo.id}/anexos`, { method: "POST", body: fd });
+    }
+
+    setTickets((t) => [novo, ...t]);
+    setModalOpen(false);
+    setForm({ tipo: TIPOS[0].status, localizacaoId: localizacaoVinculada?.id ?? "", prioridade: "MEDIA", descricao: "", contatoNome: "" });
+    setFiles([]);
     setSaving(false);
+    setSavingStep("");
+    router.refresh();
   }
 
   return (
@@ -123,12 +200,20 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
             <p className="text-xs text-gray-500">{userName}</p>
           </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
-        >
-          Sair
-        </button>
+        <div className="flex items-center gap-3">
+          {liveConnected && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Ao vivo
+            </span>
+          )}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
+          >
+            Sair
+          </button>
+        </div>
       </header>
 
       <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -198,7 +283,7 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
                   const st = statusPortal(t);
                   const pr = PRIORIDADE_CONFIG[t.prioridade];
                   return (
-                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={t.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => router.push(`/tickets/${t.id}`)}>
                       <td className="px-5 py-3.5">
                         <span className="font-mono font-black text-indigo-600">#{t.numero}</span>
                       </td>
@@ -239,7 +324,7 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <h2 className="text-base font-bold text-gray-900">Abrir Novo Chamado</h2>
-              <button onClick={() => { setModalOpen(false); setErro(""); }}
+              <button onClick={() => { setModalOpen(false); setErro(""); setFiles([]); }}
                 className="text-gray-400 hover:text-gray-700 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -248,6 +333,7 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
             </div>
 
             <form onSubmit={abrirChamado} className="p-6 space-y-4">
+
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de chamado</label>
                 <select
@@ -327,22 +413,110 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
                 />
               </div>
 
+              <div className="flex gap-3 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  <span className="font-bold">Anexe uma foto ou vídeo do problema.</span> Isso agiliza muito o atendimento — a equipe técnica consegue avaliar o chamado com muito mais precisão antes de ir ao local.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Anexos <span className="font-normal text-gray-400">(fotos ou vídeos, máx. 5 arquivos · 50 MB cada)</span>
+                </label>
+                <label className={`flex flex-col items-center justify-center gap-1.5 w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${files.length >= 5 ? "border-gray-200 bg-gray-50 opacity-50 pointer-events-none" : "border-gray-300 hover:border-indigo-400 hover:bg-indigo-50"}`}>
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-xs text-gray-500">Clique para selecionar imagens ou vídeos</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => adicionarArquivos(e.target.files)}
+                    disabled={files.length >= 5}
+                  />
+                </label>
+
+                {files.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {files.map((f, i) => (
+                      <li key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl text-xs">
+                        {f.type.startsWith("video/") ? (
+                          <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        <span className="flex-1 truncate text-gray-700">{f.name}</span>
+                        <span className="text-gray-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                        <button
+                          type="button"
+                          onClick={() => removerArquivo(i)}
+                          className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {erro && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>
               )}
 
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setModalOpen(false); setErro(""); }}
+                <button type="button" onClick={() => { setModalOpen(false); setErro(""); setFiles([]); }}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm">
                   Cancelar
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl transition-colors text-sm">
-                  {saving ? "Enviando..." : "Abrir Chamado"}
+                  {saving ? savingStep || "Enviando..." : "Abrir Chamado"}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toasts de atualização em tempo real */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 items-end">
+          {toasts.map((t) => (
+            <div
+              key={t.key}
+              className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-2xl shadow-lg text-sm max-w-xs"
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-indigo-500" />
+              <div className="flex flex-col gap-0.5">
+                <span className="font-semibold text-gray-900">Chamado #{t.numero} atualizado</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full w-fit ${t.bg} ${t.text}`}>
+                  {t.label}
+                </span>
+              </div>
+              <button
+                onClick={() => setToasts((prev) => prev.filter((x) => x.key !== t.key))}
+                className="ml-1 text-gray-300 hover:text-gray-500 transition-colors shrink-0"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
