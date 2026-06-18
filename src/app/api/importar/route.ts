@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
 import { PIPELINE_COLUMNS } from "@/store/board";
+import { cidadeParaUf, modalidadeParaStatus, parseValor, linhasParaObjetos } from "@/lib/import-tickets";
 
 // Gera planilha template para download
 export async function GET() {
@@ -76,17 +77,20 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "Arquivo não enviado" }, { status: 400 });
+  const clienteIdPadrao = (formData.get("clienteIdPadrao") as string | null) || "";
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const wb = XLSX.read(buffer, { type: "buffer" });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+  const matriz = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+  const { linhaCabecalho, registros: rows } = linhasParaObjetos(matriz);
 
   if (rows.length === 0) return NextResponse.json({ error: "Planilha vazia" }, { status: 400 });
 
   // Carrega clientes e localizações para matching (mutável durante o import)
   const clientesDB = await prisma.cliente.findMany({ include: { localizacoes: true } });
   const clienteMap = new Map(clientesDB.map((c) => [c.nome.toUpperCase().trim(), c]));
+  const clientePadrao = clienteIdPadrao ? clientesDB.find((c) => c.id === clienteIdPadrao) ?? null : null;
   const locMap = new Map(
     clientesDB.flatMap((c) =>
       c.localizacoes.map((l) => [`${c.nome.toUpperCase()}|${l.uf.toUpperCase()}|${l.nome.toUpperCase()}`, l])
@@ -139,7 +143,12 @@ export async function POST(req: NextRequest) {
   const ultimo = await prisma.ticket.findFirst({ orderBy: { numero: "desc" } });
   let proximoNumero = (ultimo?.numero ?? 0) + 1;
 
+  // Tickets já importados anteriormente, para evitar duplicar ao reimportar a mesma planilha
+  const ticketsExistentes = await prisma.ticket.findMany({ where: { ticketExterno: { not: "" } } });
+  const ticketExternoMap = new Map(ticketsExistentes.map((t) => [`${t.clienteId}|${t.ticketExterno}`, t]));
+
   const importados: number[] = [];
+  const atualizados: number[] = [];
   const erros: { linha: number; motivo: string; dados: string }[] = [];
   const clientesCriados = new Set<string>();
   const localizacoesCriadas = new Set<string>();
@@ -149,32 +158,38 @@ export async function POST(req: NextRequest) {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const linha = i + 2; // linha 1 = header, dados começam em 2
+    const linha = linhaCabecalho + 2 + i; // +1 (0-index → 1-index) +1 (linha de dados é a seguinte ao cabeçalho)
 
     const nomeCliente = col(row, "cliente", "client");
-    const uf = col(row, "uf", "estado", "state");
-    const nomeLocal = col(row, "localização", "localizacao", "local", "location", "loja", "unidade");
+    const ufRaw = col(row, "uf", "estado", "state", "local", "cidade", "city");
+    const nomeLocal = col(row, "localização", "localizacao", "unidade", "location", "loja");
 
-    if (!nomeCliente) { erros.push({ linha, motivo: "Coluna 'Cliente' vazia", dados: JSON.stringify(row) }); continue; }
-    if (!uf) { erros.push({ linha, motivo: "Coluna 'UF' vazia", dados: JSON.stringify(row) }); continue; }
-    if (!nomeLocal) { erros.push({ linha, motivo: "Coluna 'Localização' vazia", dados: JSON.stringify(row) }); continue; }
+    if (!nomeCliente && !clientePadrao) { erros.push({ linha, motivo: "Coluna 'Cliente' vazia e nenhum cliente padrão selecionado", dados: JSON.stringify(row) }); continue; }
+    if (!nomeLocal) { erros.push({ linha, motivo: "Coluna 'Localização'/'Unidade' vazia", dados: JSON.stringify(row) }); continue; }
 
-    const cliente = await obterOuCriarCliente(nomeCliente);
+    const uf = /^[A-Za-z]{2}$/.test(ufRaw) ? ufRaw.toUpperCase() : cidadeParaUf(ufRaw);
+    if (!uf) { erros.push({ linha, motivo: `Não foi possível identificar a UF para "${ufRaw}"`, dados: JSON.stringify(row) }); continue; }
+
+    const cliente = nomeCliente ? await obterOuCriarCliente(nomeCliente) : clientePadrao!;
     if (!clientesAntes.has(cliente.id)) clientesCriados.add(cliente.nome);
-    const localizacao = await obterOuCriarLocalizacao(cliente.id, nomeCliente, nomeLocal, uf);
+    const localizacao = await obterOuCriarLocalizacao(cliente.id, cliente.nome, nomeLocal, uf);
     if (!locsAntes.has(localizacao.id)) localizacoesCriadas.add(`${localizacao.nome}/${localizacao.uf}`);
 
-    // Status
+    const descricao = col(row,
+      "descrição", "descricao", "description", "obs", "observação", "observacao",
+      "detalhe", "detalhes", "problema", "motivo", "descrição do serviço", "descricao do serviço",
+    );
+
+    // Status: etapa explícita > modalidade de serviço > padrão
     const etapaRaw = col(row, "etapa", "status", "stage");
-    let status: string = "CHAMADO_REFRIG";
+    const modalidadeRaw = col(row, "modalidade de serviço", "modalidade de servico", "modalidade");
+    let status: string | null = null;
     if (etapaRaw) {
-      if (statusIdSet.has(etapaRaw.toUpperCase())) {
-        status = etapaRaw.toUpperCase();
-      } else {
-        const fromLabel = statusLabelMap.get(etapaRaw.toLowerCase());
-        if (fromLabel) status = fromLabel;
-      }
+      if (statusIdSet.has(etapaRaw.toUpperCase())) status = etapaRaw.toUpperCase();
+      else status = statusLabelMap.get(etapaRaw.toLowerCase()) ?? null;
     }
+    if (!status) status = modalidadeParaStatus(modalidadeRaw, descricao);
+    if (!status) status = "CHAMADO_REFRIG";
 
     // Prioridade
     const prioRaw = col(row, "prioridade", "priority");
@@ -182,42 +197,47 @@ export async function POST(req: NextRequest) {
 
     // Valor
     const valorRaw = col(row, "valor (r$)", "valor", "value", "r$");
-    const valorServico = parseFloat(valorRaw.replace(/\./g, "").replace(",", ".")) || 0;
+    const valorServico = parseValor(valorRaw);
+
+    const ticketExterno = col(row,
+      "nº ticket", "n° ticket", "num ticket", "numero ticket", "ticket", "chamado",
+      "número do ticket", "nro ticket", "nro. ticket", "ticket externo", "nº chamado",
+    );
+    const ovNumero = col(row,
+      "ov", "op", "nº ov", "n° ov", "num ov", "numero ov", "número ov", "nro ov",
+      "ordem de venda", "ordem venda", "n ov", "ov nº", "ov numero",
+    );
+    const osNumero = col(row,
+      "os", "nº os", "n° os", "num os", "numero os", "número os", "nro os",
+      "ordem de serviço", "ordem de servico", "ordem serviço", "ordem servico",
+      "n os", "os nº", "os numero",
+    );
+    const contatoNome = col(row,
+      "contato na empresa", "contato", "solicitante", "contact",
+      "nome contato", "nome do contato", "responsavel cliente", "responsável cliente",
+    );
+
+    const dados = {
+      ticketExterno, ovNumero, osNumero, descricao, contatoNome,
+      prioridade: prioridade as "BAIXA" | "MEDIA" | "ALTA" | "CRITICA",
+      status, valorServico,
+      clienteId: cliente.id,
+      localizacaoId: localizacao.id,
+    };
+
+    const chaveExistente = ticketExterno ? `${cliente.id}|${ticketExterno}` : "";
+    const existente = chaveExistente ? ticketExternoMap.get(chaveExistente) : undefined;
 
     try {
-      await prisma.ticket.create({
-        data: {
-          numero: proximoNumero++,
-          ticketExterno: col(row,
-            "nº ticket", "n° ticket", "num ticket", "numero ticket", "ticket", "chamado",
-            "número do ticket", "nro ticket", "nro. ticket", "ticket externo", "nº chamado",
-          ),
-          ovNumero: col(row,
-            "ov", "nº ov", "n° ov", "num ov", "numero ov", "número ov", "nro ov",
-            "ordem de venda", "ordem venda", "n ov", "ov nº", "ov numero",
-          ),
-          osNumero: col(row,
-            "os", "nº os", "n° os", "num os", "numero os", "número os", "nro os",
-            "ordem de serviço", "ordem de servico", "ordem serviço", "ordem servico",
-            "n os", "os nº", "os numero",
-          ),
-          descricao: col(row,
-            "descrição", "descricao", "description", "obs", "observação", "observacao",
-            "detalhe", "detalhes", "problema", "motivo",
-          ),
-          contatoNome: col(row,
-            "contato na empresa", "contato", "solicitante", "contact",
-            "nome contato", "nome do contato", "responsavel cliente", "responsável cliente",
-          ),
-          prioridade: prioridade as "BAIXA" | "MEDIA" | "ALTA" | "CRITICA",
-          status,
-          valorServico,
-          clienteId: cliente.id,
-          localizacaoId: localizacao.id,
-          solicitanteId: dbUser.id,
-        },
-      });
-      importados.push(linha);
+      if (existente) {
+        await prisma.ticket.update({ where: { id: existente.id }, data: dados });
+        atualizados.push(linha);
+      } else {
+        const numero = proximoNumero++;
+        const novo = await prisma.ticket.create({ data: { ...dados, numero, solicitanteId: dbUser.id } });
+        if (chaveExistente) ticketExternoMap.set(chaveExistente, novo);
+        importados.push(linha);
+      }
     } catch (e) {
       erros.push({ linha, motivo: `Erro ao salvar: ${(e as Error).message}`, dados: JSON.stringify(row) });
     }
@@ -226,6 +246,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     total: rows.length,
     importados: importados.length,
+    atualizados: atualizados.length,
     erros,
     clientesCriados: [...clientesCriados],
     localizacoesCriadas: [...localizacoesCriadas],

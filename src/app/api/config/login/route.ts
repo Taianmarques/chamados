@@ -2,10 +2,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     let config = await prisma.loginConfig.findFirst();
-    
+
     if (!config) {
       config = await prisma.loginConfig.create({
         data: {
@@ -17,7 +19,7 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json(config);
+    return NextResponse.json(config, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Erro ao buscar configurações de login:", error);
     return NextResponse.json(

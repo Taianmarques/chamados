@@ -3,8 +3,9 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/layout/Navbar";
 import * as XLSX from "xlsx";
+import { linhasParaObjetos } from "@/lib/import-tickets";
 
-interface Props { userName: string; userRole: string; }
+interface Props { userName: string; userRole: string; clientes: { id: string; nome: string }[]; }
 
 interface LinhaPreview {
   linha: number;
@@ -24,6 +25,7 @@ interface LinhaPreview {
 interface Resultado {
   total: number;
   importados: number;
+  atualizados: number;
   erros: { linha: number; motivo: string }[];
   clientesCriados: string[];
   localizacoesCriadas: string[];
@@ -38,13 +40,14 @@ function col(row: Record<string, string>, ...keys: string[]): string {
   return "";
 }
 
-export default function ImportarClient({ userName, userRole }: Props) {
+export default function ImportarClient({ userName, userRole, clientes }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<LinhaPreview[]>([]);
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [clienteIdPadrao, setClienteIdPadrao] = useState("");
 
   const [cabecalhos, setCabecalhos] = useState<string[]>([]);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -80,23 +83,24 @@ export default function ImportarClient({ userName, userRole }: Props) {
 
       const wb = XLSX.read(buffer, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+      const matriz = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+      const { linhaCabecalho, registros: rows } = linhasParaObjetos(matriz);
 
       // Captura cabeçalhos originais
       if (rows.length > 0) setCabecalhos(Object.keys(rows[0]));
 
       const linhas: LinhaPreview[] = rows.slice(0, 100).map((row, i) => ({
-        linha: i + 2,
+        linha: linhaCabecalho + 2 + i,
         cliente: col(row, "cliente"),
-        uf: col(row, "uf", "estado"),
-        localizacao: col(row, "localização", "localizacao", "local", "loja", "unidade"),
+        uf: col(row, "uf", "estado", "local", "cidade"),
+        localizacao: col(row, "localização", "localizacao", "unidade", "loja"),
         ticket: col(row, "nº ticket", "n° ticket", "num ticket", "numero ticket", "ticket", "chamado", "nº chamado"),
-        ov: col(row, "ov", "nº ov", "n° ov", "num ov", "numero ov", "número ov", "nro ov", "ordem de venda", "ordem venda"),
+        ov: col(row, "ov", "op", "nº ov", "n° ov", "num ov", "numero ov", "número ov", "nro ov", "ordem de venda", "ordem venda"),
         os: col(row, "os", "nº os", "n° os", "num os", "numero os", "número os", "nro os", "ordem de serviço", "ordem de servico"),
-        descricao: col(row, "descrição", "descricao", "description", "obs"),
+        descricao: col(row, "descrição", "descricao", "description", "obs", "descrição do serviço", "descricao do serviço"),
         contato: col(row, "contato na empresa", "contato", "solicitante"),
         prioridade: col(row, "prioridade"),
-        etapa: col(row, "etapa", "status"),
+        etapa: col(row, "etapa", "status", "modalidade de serviço", "modalidade de servico", "modalidade"),
         valor: col(row, "valor (r$)", "valor", "value"),
       }));
 
@@ -128,6 +132,7 @@ export default function ImportarClient({ userName, userRole }: Props) {
 
     const form = new FormData();
     form.append("file", arquivo);
+    if (clienteIdPadrao) form.append("clienteIdPadrao", clienteIdPadrao);
 
     const res = await fetch("/api/importar", { method: "POST", body: form });
     const data = await res.json();
@@ -208,12 +213,19 @@ export default function ImportarClient({ userName, userRole }: Props) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {preview.some((r) => !r.cliente) && (
+                  <select value={clienteIdPadrao} onChange={(e) => setClienteIdPadrao(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Cliente padrão (planilha sem coluna Cliente)</option>
+                    {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                )}
                 <button onClick={limpar} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
                   Trocar arquivo
                 </button>
                 <button
                   onClick={importar}
-                  disabled={importando || preview.length === 0}
+                  disabled={importando || preview.length === 0 || (preview.some((r) => !r.cliente) && !clienteIdPadrao)}
                   className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 rounded-lg transition-colors"
                 >
                   {importando ? "Importando..." : `Importar ${preview.length} chamados`}
@@ -314,12 +326,15 @@ export default function ImportarClient({ userName, userRole }: Props) {
                 </div>
                 <div className="flex-1">
                   <p className="text-base font-semibold text-gray-900">
-                    {resultado.importados === resultado.total
-                      ? `Todos os ${resultado.importados} chamados importados com sucesso!`
-                      : `${resultado.importados} de ${resultado.total} chamados importados`}
+                    {resultado.importados + resultado.atualizados === resultado.total
+                      ? `Todos os ${resultado.total} chamados processados com sucesso!`
+                      : `${resultado.importados + resultado.atualizados} de ${resultado.total} chamados processados`}
                   </p>
                   <div className="flex flex-wrap gap-4 mt-2">
-                    <span className="text-sm text-emerald-700 font-medium">✓ {resultado.importados} importados</span>
+                    <span className="text-sm text-emerald-700 font-medium">✓ {resultado.importados} novos</span>
+                    {resultado.atualizados > 0 && (
+                      <span className="text-sm text-blue-700 font-medium">↻ {resultado.atualizados} atualizados</span>
+                    )}
                     {resultado.erros.length > 0 && (
                       <span className="text-sm text-red-600 font-medium">✗ {resultado.erros.length} com erro</span>
                     )}
