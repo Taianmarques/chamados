@@ -43,6 +43,62 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
   const ufsDisponiveis = [...new Set((clienteSel?.localizacoes ?? []).map((l) => l.uf))].sort();
   const locsFiltradas = (clienteSel?.localizacoes ?? []).filter((l) => !novoUser.ufFiltro || l.uf === novoUser.ufFiltro);
 
+  // Edição de usuário
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", ativo: true, clienteId: "", ufFiltro: "", localizacaoId: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [erroEdit, setErroEdit] = useState("");
+
+  const clienteSelEdit = clientes.find((c) => c.id === editUser.clienteId) ?? null;
+  const ufsDisponiveisEdit = [...new Set((clienteSelEdit?.localizacoes ?? []).map((l) => l.uf))].sort();
+  const locsFiltradasEdit = (clienteSelEdit?.localizacoes ?? []).filter((l) => !editUser.ufFiltro || l.uf === editUser.ufFiltro);
+
+  function abrirEdicao(u: Usuario) {
+    setEditandoId(u.id);
+    setErroEdit("");
+    setEditUser({
+      name: u.name, email: u.email, password: "", role: u.role, ativo: u.ativo,
+      clienteId: u.clienteId ?? "", ufFiltro: u.localizacao?.uf ?? "", localizacaoId: u.localizacaoId ?? "",
+    });
+  }
+
+  async function salvarEdicao(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoId) return;
+    setSavingEdit(true);
+    setErroEdit("");
+    const body: Record<string, unknown> = {
+      name: editUser.name, email: editUser.email, role: editUser.role, ativo: editUser.ativo,
+      clienteId: editUser.clienteId, localizacaoId: editUser.localizacaoId,
+    };
+    if (editUser.password) body.password = editUser.password;
+    const res = await fetch(`/api/usuarios/${editandoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const atualizado = await res.json();
+      setUsuarios((lista) => lista.map((u) => (u.id === atualizado.id ? atualizado : u)).sort((a, b) => a.name.localeCompare(b.name)));
+      setEditandoId(null);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setErroEdit(data.error ?? "Erro ao salvar alterações.");
+    }
+    setSavingEdit(false);
+  }
+
+  async function excluirUsuario(u: Usuario) {
+    if (!confirm(`Excluir o usuário "${u.name}"? Essa ação não pode ser desfeita.`)) return;
+    const res = await fetch(`/api/usuarios/${u.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setUsuarios((lista) => lista.filter((x) => x.id !== u.id));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Erro ao excluir usuário.");
+    }
+  }
+
   // Form novo cliente
   const [novoCliente, setNovoCliente] = useState({ nome: "", cor: "#6366f1" });
   const [savingCliente, setSavingCliente] = useState(false);
@@ -210,6 +266,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Empresa</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Localização</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -229,10 +286,112 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                           {u.ativo ? "Ativo" : "Inativo"}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button onClick={() => abrirEdicao(u)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mr-3">
+                          Editar
+                        </button>
+                        <button onClick={() => excluirUsuario(u)} className="text-xs text-red-600 hover:text-red-800 font-medium">
+                          Excluir
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL EDITAR USUÁRIO ── */}
+        {editandoId && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Editar Usuário</h2>
+              <form onSubmit={salvarEdicao} className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nome</label>
+                  <input value={editUser.name} onChange={(e) => setEditUser((u) => ({ ...u, name: e.target.value }))} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value={editUser.email} onChange={(e) => setEditUser((u) => ({ ...u, email: e.target.value }))} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nova senha (opcional)</label>
+                  <input type="password" value={editUser.password} onChange={(e) => setEditUser((u) => ({ ...u, password: e.target.value }))} minLength={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Deixe em branco para manter" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
+                  <select value={editUser.role} onChange={(e) => setEditUser((u) => ({ ...u, role: e.target.value, clienteId: "", ufFiltro: "", localizacaoId: "" }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                  </select>
+                </div>
+                {editUser.role === "SOLICITANTE" && (
+                  <>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Empresa</label>
+                      <select
+                        value={editUser.clienteId}
+                        onChange={(e) => setEditUser((u) => ({ ...u, clienteId: e.target.value, ufFiltro: "", localizacaoId: "" }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Selecione a empresa</option>
+                        {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                      </select>
+                    </div>
+                    {clienteSelEdit && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Região (UF)</label>
+                          <select
+                            value={editUser.ufFiltro}
+                            onChange={(e) => setEditUser((u) => ({ ...u, ufFiltro: e.target.value, localizacaoId: "" }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Todas as regiões</option>
+                            {ufsDisponiveisEdit.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Localização responsável</label>
+                          <select
+                            value={editUser.localizacaoId}
+                            onChange={(e) => setEditUser((u) => ({ ...u, localizacaoId: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Sem localização específica</option>
+                            {locsFiltradasEdit.map((l) => <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>)}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+                <div className="col-span-2 flex items-center gap-2">
+                  <input type="checkbox" id="ativo-edit" checked={editUser.ativo} onChange={(e) => setEditUser((u) => ({ ...u, ativo: e.target.checked }))}
+                    className="rounded border-gray-300" />
+                  <label htmlFor="ativo-edit" className="text-sm text-gray-700">Usuário ativo</label>
+                </div>
+
+                {erroEdit && (
+                  <p className="col-span-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erroEdit}</p>
+                )}
+
+                <div className="col-span-2 flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => setEditandoId(null)}
+                    className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingEdit}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
+                    {savingEdit ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
