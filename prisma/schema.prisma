@@ -25,6 +25,7 @@ model User {
   ticketsAtribuidos Ticket[]     @relation("Agente")
   comentarios       Comment[]
   anexos            Attachment[]
+  notificacoes      Notification[]
 }
 
 enum Role {
@@ -80,12 +81,26 @@ model Ticket {
   agenteId String?
   agente   User?   @relation("Agente", fields: [agenteId], references: [id])
 
-  comentarios Comment[]
-  anexos      Attachment[]
+  comentarios   Comment[]
+  anexos        Attachment[]
+  notificacoes  Notification[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   resolvidoAt DateTime?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  mensagem  String
+  lida      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, lida])
 }
 
 model Attachment {

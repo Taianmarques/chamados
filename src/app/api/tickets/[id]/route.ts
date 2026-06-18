@@ -48,6 +48,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.contatoNome !== undefined) data.contatoNome = body.contatoNome;
   if (body.resolvidoAt !== undefined) data.resolvidoAt = body.resolvidoAt ? new Date(body.resolvidoAt) : null;
 
+  const anterior = body.agenteId !== undefined
+    ? await prisma.ticket.findUnique({ where: { id }, select: { agenteId: true, numero: true } })
+    : null;
+
   const ticket = await prisma.ticket.update({
     where: { id },
     data,
@@ -57,6 +61,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       _count: { select: { comentarios: true } },
     },
   });
+
+  const novoAgenteId = body.agenteId || null;
+  if (anterior && novoAgenteId && novoAgenteId !== anterior.agenteId) {
+    await prisma.notification.create({
+      data: {
+        userId: novoAgenteId,
+        ticketId: id,
+        mensagem: `Chamado #${anterior.numero} foi atribuído a você.`,
+      },
+    });
+  }
 
   return NextResponse.json(ticket);
 }
