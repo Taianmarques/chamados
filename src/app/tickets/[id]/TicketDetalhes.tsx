@@ -98,6 +98,11 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
     setSaving(false);
   }
 
+  async function marcarPerca() {
+    if (!confirm("Marcar este chamado como Orçamento Reprovado? Essa ação encerra o chamado.")) return;
+    await updateField("status", "ORC_REPROVADO");
+  }
+
   async function marcarResolvido(resolver: boolean) {
     setSaving(true);
     const res = await fetch(`/api/tickets/${ticket.id}`, {
@@ -479,6 +484,18 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
                       <option key={c.id} value={c.id}>{c.label}</option>
                     ))}
                   </select>
+                  {ticket.status !== "ORC_REPROVADO" && (
+                    <button
+                      onClick={marcarPerca}
+                      disabled={saving}
+                      className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Perca (Orçamento Reprovado)
+                    </button>
+                  )}
                 </div>
               )}
 

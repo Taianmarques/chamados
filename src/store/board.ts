@@ -34,6 +34,8 @@ export const PIPELINE_COLUMNS = [
   // Faturamento
   { id: "FATURAMENTO",           label: "Faturamento Financeiro/Adm",                            cor: "#059669", grupo: "faturamento" },
   { id: "FATURADO_AGUARD",       label: "Faturado Aguardando Pagamento Financeiro/Adm",          cor: "#047857", grupo: "faturamento" },
+  // Encerrado
+  { id: "ORC_REPROVADO",         label: "Orçamento Reprovado",                                   cor: "#dc2626", grupo: "reprovado" },
 ] as const;
 
 export type TicketStatus = typeof PIPELINE_COLUMNS[number]["id"];
@@ -57,7 +59,7 @@ export const SETORES = [
     id: "VALIDACAO",
     label: "Validação",
     cor: "#f97316",
-    colunas: ["SOLIC_ORCAMENTO", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD"],
+    colunas: ["SOLIC_ORCAMENTO", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD", "ORC_REPROVADO"],
   },
   {
     id: "COMPRAS",

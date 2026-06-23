@@ -27,6 +27,7 @@ interface Props {
 
 const ETAPAS_FATURADO = ["FATURADO_AGUARD"];
 const ETAPAS_EM_FAT = ["FATURAMENTO"];
+const ETAPAS_ENCERRADO = ["ORC_REPROVADO"];
 
 function BarraHorizontal({ valor, max, cor }: { valor: number; max: number; cor?: string }) {
   const pct = max > 0 ? Math.max(2, (valor / max) * 100) : 0;
@@ -53,7 +54,7 @@ export default function DashboardClient({ tickets, userName, userRole }: Props) 
     : tickets;
 
   // ── Totais ──
-  const emAberto = ticketsFiltrados.filter((t) => !ETAPAS_FATURADO.includes(t.status) && !ETAPAS_EM_FAT.includes(t.status));
+  const emAberto = ticketsFiltrados.filter((t) => !ETAPAS_FATURADO.includes(t.status) && !ETAPAS_EM_FAT.includes(t.status) && !ETAPAS_ENCERRADO.includes(t.status));
   const emFaturamento = ticketsFiltrados.filter((t) => ETAPAS_EM_FAT.includes(t.status));
   const faturados = ticketsFiltrados.filter((t) => ETAPAS_FATURADO.includes(t.status));
 

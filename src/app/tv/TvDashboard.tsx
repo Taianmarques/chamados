@@ -22,9 +22,12 @@ const GRUPOS_CONFIG = [
   { id: "compras",     label: "Compras",          cor: "#8b5cf6" },
   { id: "corretiva",   label: "Corretiva",        cor: "#ef4444" },
   { id: "faturamento", label: "Faturamento",      cor: "#059669" },
+  { id: "reprovado",   label: "Reprovado",        cor: "#dc2626" },
 ] as const;
 
 const FATURAMENTO_IDS = ["FATURAMENTO", "FATURADO_AGUARD"];
+const ENCERRADO_IDS   = ["ORC_REPROVADO"];
+const FECHADO_IDS     = [...FATURAMENTO_IDS, ...ENCERRADO_IDS];
 const CORRETIVA_IDS   = ["CORRETIVA_REFRIG","CORRETIVA_CIVIL","CORRETIVA_BEBEDOURO","CORRETIVA_CAPEX","CORRETIVA_SEM_APROV","EMERGENCIAL"];
 
 const GRUPO_BADGE: Record<string, string> = {
@@ -34,10 +37,12 @@ const GRUPO_BADGE: Record<string, string> = {
   compras:     "bg-violet-900/60 text-violet-300",
   corretiva:   "bg-red-900/60 text-red-300",
   faturamento: "bg-green-900/60 text-green-300",
+  reprovado:   "bg-rose-900/60 text-rose-300",
 };
 const GRUPO_SHORT: Record<string, string> = {
   chamado: "Chamado", orcamento: "Orçamento", orc_aprov: "Orc.Aprovado",
   compras: "Compras", corretiva: "Corretiva", faturamento: "Faturamento",
+  reprovado: "Reprovado",
 };
 
 const STATUS_BADGE: Record<string, string>  = {};
@@ -84,8 +89,8 @@ export default function TvDashboard({ tickets }: Props) {
 
   const faturados = tickets.filter((t) => FATURAMENTO_IDS.includes(t.status));
   const corretiva = tickets.filter((t) => CORRETIVA_IDS.includes(t.status));
-  const criticos  = tickets.filter((t) => t.prioridade === "CRITICA" && !FATURAMENTO_IDS.includes(t.status));
-  const emAberto  = tickets.filter((t) => !FATURAMENTO_IDS.includes(t.status));
+  const criticos  = tickets.filter((t) => t.prioridade === "CRITICA" && !FECHADO_IDS.includes(t.status));
+  const emAberto  = tickets.filter((t) => !FECHADO_IDS.includes(t.status));
   const mediaRes  = mediaTempoResolucao(tickets);
   const recentes  = tickets.slice(0, 10); // já vem ordenado por createdAt desc
 
@@ -106,7 +111,7 @@ export default function TvDashboard({ tickets }: Props) {
     tickets.reduce<Record<string, { nome: string; cor: string; total: number; abertos: number }>>((acc, t) => {
       if (!acc[t.cliente.id]) acc[t.cliente.id] = { nome: t.cliente.nome, cor: t.cliente.cor, total: 0, abertos: 0 };
       acc[t.cliente.id].total++;
-      if (!FATURAMENTO_IDS.includes(t.status)) acc[t.cliente.id].abertos++;
+      if (!FECHADO_IDS.includes(t.status)) acc[t.cliente.id].abertos++;
       return acc;
     }, {})
   ).sort((a, b) => b.total - a.total);

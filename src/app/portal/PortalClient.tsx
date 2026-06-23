@@ -33,6 +33,7 @@ PIPELINE_COLUMNS.forEach((c) => {
     compras:     { label: "Em compras",    bg: "bg-violet-100",  text: "text-violet-700" },
     corretiva:   { label: "Em execução",   bg: "bg-orange-100",  text: "text-orange-700" },
     faturamento: { label: "Concluído",     bg: "bg-green-100",   text: "text-green-700" },
+    reprovado:   { label: "Reprovado",     bg: "bg-red-100",     text: "text-red-700" },
   };
   STATUS_PORTAL[c.id] = map[c.grupo as keyof typeof map];
 });
@@ -106,8 +107,8 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
     return () => { clearInterval(intervalId); setLiveConnected(false); };
   }, []);
 
-  const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
-  const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD"].includes(t.status));
+  const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD", "ORC_REPROVADO"].includes(t.status));
+  const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD", "ORC_REPROVADO"].includes(t.status));
 
   function adicionarArquivos(novos: FileList | null) {
     if (!novos) return;
