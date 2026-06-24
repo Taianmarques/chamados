@@ -34,12 +34,19 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
     orderBy: { name: "asc" },
   });
 
+  const localizacoes = await prisma.localizacao.findMany({
+    where: { clienteId: ticket.clienteId },
+    select: { id: true, nome: true, uf: true },
+    orderBy: [{ uf: "asc" }, { nome: "asc" }],
+  });
+
   const user = session.user as { id: string; role: string; name: string };
 
   return (
     <TicketDetalhes
       ticket={JSON.parse(JSON.stringify(ticket))}
       agentes={agentes}
+      localizacoes={localizacoes}
       currentUser={user}
     />
   );

@@ -51,7 +51,7 @@ export default function BoardClient({ userName, userRole }: Props) {
             <p className="text-xs text-gray-500">{totalAbertos} chamado{totalAbertos !== 1 ? "s" : ""} carregado{totalAbertos !== 1 ? "s" : ""}</p>
           </div>
 
-          {/* Busca por Ticket / OV / OS */}
+          {/* Busca por Ticket / OV / OS / Unidade */}
           <div className="relative">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
@@ -59,7 +59,7 @@ export default function BoardClient({ userName, userRole }: Props) {
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por Ticket, OV ou OS..."
+              placeholder="Ticket, OV, OS, Unidade..."
               className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
             />
             {busca && (

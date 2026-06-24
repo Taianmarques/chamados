@@ -107,6 +107,12 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
   const [novaLoc, setNovaLoc] = useState({ nome: "", uf: "", clienteId: "" });
   const [savingLoc, setSavingLoc] = useState(false);
 
+  // Edição de localização
+  const [editandoLocId, setEditandoLocId] = useState<string | null>(null);
+  const [editLoc, setEditLoc] = useState({ nome: "", uf: "" });
+  const [savingLocEdit, setSavingLocEdit] = useState(false);
+  const [erroLocEdit, setErroLocEdit] = useState("");
+
   async function criarUsuario(e: React.FormEvent) {
     e.preventDefault();
     setSavingUser(true);
@@ -159,6 +165,53 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
       setNovaLoc((l) => ({ ...l, nome: "", uf: "" }));
     }
     setSavingLoc(false);
+  }
+
+  function abrirEdicaoLoc(loc: Localizacao) {
+    setEditandoLocId(loc.id);
+    setErroLocEdit("");
+    setEditLoc({ nome: loc.nome, uf: loc.uf });
+  }
+
+  async function salvarEdicaoLoc(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoLocId) return;
+    setSavingLocEdit(true);
+    setErroLocEdit("");
+    const res = await fetch(`/api/localizacoes/${editandoLocId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editLoc),
+    });
+    if (res.ok) {
+      const atualizada = await res.json();
+      setClientes((list) =>
+        list.map((c) => ({
+          ...c,
+          localizacoes: c.localizacoes
+            .map((l) => (l.id === atualizada.id ? atualizada : l))
+            .sort((a, b) => a.uf.localeCompare(b.uf) || a.nome.localeCompare(b.nome)),
+        }))
+      );
+      setEditandoLocId(null);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setErroLocEdit(data.error ?? "Erro ao salvar alterações.");
+    }
+    setSavingLocEdit(false);
+  }
+
+  async function excluirLocalizacao(loc: Localizacao) {
+    if (!confirm(`Excluir a localização "${loc.uf} — ${loc.nome}"? Essa ação não pode ser desfeita.`)) return;
+    const res = await fetch(`/api/localizacoes/${loc.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setClientes((list) =>
+        list.map((c) => ({ ...c, localizacoes: c.localizacoes.filter((l) => l.id !== loc.id) }))
+      );
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Erro ao excluir localização.");
+    }
   }
 
   return (
@@ -503,7 +556,14 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                             <div key={l.id} className="flex items-center gap-3 px-5 py-2.5">
                               <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded font-mono">{l.uf}</span>
                               <span className="text-sm text-gray-800">{l.nome}</span>
-                              <span className="text-xs text-gray-400 ml-auto font-mono">{l.nome}/{l.uf}</span>
+                              <div className="ml-auto flex items-center gap-3">
+                                <button onClick={() => abrirEdicaoLoc(l)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                  Editar
+                                </button>
+                                <button onClick={() => excluirLocalizacao(l)} className="text-xs text-red-600 hover:text-red-800 font-medium">
+                                  Excluir
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -512,6 +572,45 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL EDITAR LOCALIZAÇÃO ── */}
+        {editandoLocId && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Editar Localização</h2>
+              <form onSubmit={salvarEdicaoLoc} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">UF</label>
+                  <select value={editLoc.uf} onChange={(e) => setEditLoc((l) => ({ ...l, uf: e.target.value }))} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Selecione</option>
+                    {UFS_BR.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nome da unidade</label>
+                  <input value={editLoc.nome} onChange={(e) => setEditLoc((l) => ({ ...l, nome: e.target.value }))} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+
+                {erroLocEdit && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erroLocEdit}</p>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => setEditandoLocId(null)}
+                    className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingLocEdit}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
+                    {savingLocEdit ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

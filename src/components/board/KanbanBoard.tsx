@@ -66,7 +66,8 @@ export default function KanbanBoard() {
         t.ticketExterno.toLowerCase().includes(q) ||
         t.ovNumero.toLowerCase().includes(q) ||
         t.osNumero.toLowerCase().includes(q) ||
-        String(t.numero).includes(q)
+        String(t.numero).includes(q) ||
+        t.localizacao.nome.toLowerCase().includes(q)
       )
     : tickets;
 

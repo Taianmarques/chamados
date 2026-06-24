@@ -14,6 +14,7 @@ type Ticket = {
   id: string; numero: number; descricao: string; status: string; prioridade: string;
   ticketExterno: string; ovNumero: string; osNumero: string; valorServico: number; contatoNome: string;
   cliente: { id: string; nome: string; cor: string };
+  localizacaoId: string;
   localizacao: { id: string; nome: string; uf: string };
   solicitante: { id: string; name: string };
   agente: { id: string; name: string } | null;
@@ -31,10 +32,11 @@ type Ticket = {
 interface Props {
   ticket: Ticket;
   agentes: { id: string; name: string }[];
+  localizacoes: { id: string; nome: string; uf: string }[];
   currentUser: { id: string; role: string; name: string };
 }
 
-export default function TicketDetalhes({ ticket: initial, agentes, currentUser }: Props) {
+export default function TicketDetalhes({ ticket: initial, agentes, localizacoes, currentUser }: Props) {
   const [ticket, setTicket] = useState(initial);
   const [comentario, setComentario] = useState("");
   const [interno, setInterno] = useState(false);
@@ -597,8 +599,20 @@ export default function TicketDetalhes({ ticket: initial, agentes, currentUser }
                   <p className="text-sm font-semibold" style={{ color: ticket.cliente.cor }}>{ticket.cliente.nome}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Localização</p>
-                  <p className="text-sm font-medium text-gray-900">{ticket.localizacao.nome}/{ticket.localizacao.uf}</p>
+                  <p className="text-xs text-gray-500 mb-1">Localização</p>
+                  {isAgente ? (
+                    <select
+                      value={ticket.localizacaoId}
+                      onChange={(e) => updateField("localizacaoId", e.target.value)}
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {localizacoes.map((l) => (
+                        <option key={l.id} value={l.id}>{l.uf} — {l.nome}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm font-medium text-gray-900">{ticket.localizacao.nome}/{ticket.localizacao.uf}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Aberto por (sistema)</p>
