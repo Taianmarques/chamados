@@ -27,7 +27,7 @@ interface Props {
 
 const ETAPAS_FATURADO = ["FATURADO_AGUARD"];
 const ETAPAS_EM_FAT = ["FATURAMENTO"];
-const ETAPAS_ENCERRADO = ["ORC_REPROVADO"];
+const ETAPAS_ENCERRADO = ["ORC_REPROVADO", "CANCELADO"];
 
 function BarraHorizontal({ valor, max, cor }: { valor: number; max: number; cor?: string }) {
   const pct = max > 0 ? Math.max(2, (valor / max) * 100) : 0;

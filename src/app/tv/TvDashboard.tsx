@@ -23,10 +23,11 @@ const GRUPOS_CONFIG = [
   { id: "corretiva",   label: "Corretiva",        cor: "#ef4444" },
   { id: "faturamento", label: "Faturamento",      cor: "#059669" },
   { id: "reprovado",   label: "Reprovado",        cor: "#dc2626" },
+  { id: "cancelado",   label: "Cancelado",        cor: "#6b7280" },
 ] as const;
 
 const FATURAMENTO_IDS = ["FATURAMENTO", "FATURADO_AGUARD"];
-const ENCERRADO_IDS   = ["ORC_REPROVADO"];
+const ENCERRADO_IDS   = ["ORC_REPROVADO", "CANCELADO"];
 const FECHADO_IDS     = [...FATURAMENTO_IDS, ...ENCERRADO_IDS];
 const CORRETIVA_IDS   = ["CORRETIVA_REFRIG","CORRETIVA_CIVIL","CORRETIVA_BEBEDOURO","CORRETIVA_CAPEX","CORRETIVA_SEM_APROV","EMERGENCIAL"];
 
@@ -38,11 +39,13 @@ const GRUPO_BADGE: Record<string, string> = {
   corretiva:   "bg-red-900/60 text-red-300",
   faturamento: "bg-green-900/60 text-green-300",
   reprovado:   "bg-rose-900/60 text-rose-300",
+  cancelado:   "bg-gray-700/60 text-gray-300",
 };
 const GRUPO_SHORT: Record<string, string> = {
   chamado: "Chamado", orcamento: "Orçamento", orc_aprov: "Orc.Aprovado",
   compras: "Compras", corretiva: "Corretiva", faturamento: "Faturamento",
   reprovado: "Reprovado",
+  cancelado: "Cancelado",
 };
 
 const STATUS_BADGE: Record<string, string>  = {};

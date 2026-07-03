@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (body.status !== undefined) {
     data.status = body.status;
-    if (body.status === "FATURADO_AGUARD" || body.status === "ORC_REPROVADO") data.resolvidoAt = new Date();
+    if (body.status === "FATURADO_AGUARD" || body.status === "ORC_REPROVADO" || body.status === "CANCELADO") data.resolvidoAt = new Date();
   }
   if (body.localizacaoId !== undefined) data.localizacaoId = body.localizacaoId;
   if (body.descricao !== undefined) data.descricao = body.descricao;

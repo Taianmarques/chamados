@@ -16,7 +16,8 @@ const GRUPO_LABELS: Record<string, string> = {
   compras: "Compras",
   corretiva: "Corretiva",
   faturamento: "Faturamento",
-  reprovado: "Reprovado",
+  reprovado:  "Reprovado",
+  cancelado:  "Cancelado",
 };
 
 const GRUPO_BORDER: Record<string, string> = {
@@ -27,6 +28,7 @@ const GRUPO_BORDER: Record<string, string> = {
   corretiva:  "border-red-200",
   faturamento:"border-green-200",
   reprovado:  "border-rose-300",
+  cancelado:  "border-gray-300",
 };
 
 const GRUPO_BG: Record<string, string> = {
@@ -37,6 +39,7 @@ const GRUPO_BG: Record<string, string> = {
   corretiva:  "bg-red-50/40",
   faturamento:"bg-green-50/40",
   reprovado:  "bg-rose-50/40",
+  cancelado:  "bg-gray-50/40",
 };
 
 export default function KanbanBoard() {

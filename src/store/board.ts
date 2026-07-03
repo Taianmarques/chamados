@@ -31,6 +31,8 @@ export const PIPELINE_COLUMNS = [
   { id: "CORRETIVA_CAPEX",       label: "Corretiva Capex em Execução",                           cor: "#ef4444", grupo: "corretiva" },
   { id: "CORRETIVA_SEM_APROV",   label: "Corretiva Realizadas sem aprovação",                    cor: "#dc2626", grupo: "corretiva" },
   { id: "EMERGENCIAL",           label: "Chamados Emergenciais Realizados",                      cor: "#b91c1c", grupo: "corretiva" },
+  // Cancelados
+  { id: "CANCELADO",             label: "Cancelados",                                             cor: "#6b7280", grupo: "cancelado" },
   // Faturamento
   { id: "FATURAMENTO",           label: "Faturamento Financeiro/Adm",                            cor: "#059669", grupo: "faturamento" },
   { id: "FATURADO_AGUARD",       label: "Faturado Aguardando Pagamento Financeiro/Adm",          cor: "#047857", grupo: "faturamento" },
