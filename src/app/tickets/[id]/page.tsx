@@ -29,7 +29,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   if (!ticket) notFound();
 
   const agentes = await prisma.user.findMany({
-    where: { role: { in: ["AGENTE", "ADMIN"] }, ativo: true },
+    where: { role: { in: ["AGENTE", "ADMIN", "SUPERVISOR"] }, ativo: true },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });

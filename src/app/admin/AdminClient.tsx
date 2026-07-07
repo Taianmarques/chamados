@@ -5,15 +5,15 @@ import Navbar from "@/components/layout/Navbar";
 import LoginConfigForm from "@/components/admin/LoginConfigForm";
 
 type Usuario = {
-  id: string; name: string; email: string; role: string; ativo: boolean; createdAt: string;
+  id: string; name: string; email: string; role: string; setor: string | null; ativo: boolean; createdAt: string;
   clienteId: string | null; cliente: { id: string; nome: string } | null;
   localizacaoId: string | null; localizacao: { id: string; nome: string; uf: string } | null;
 };
 type Localizacao = { id: string; nome: string; uf: string };
 type Cliente = { id: string; nome: string; cor: string; localizacoes: Localizacao[] };
 
-const ROLE_OPTIONS = ["ADMIN", "SUPERVISOR", "AGENTE", "SOLICITANTE"];
-const ROLE_LABELS: Record<string, string> = { ADMIN: "Admin", SUPERVISOR: "Supervisor", AGENTE: "Agente", SOLICITANTE: "Solicitante" };
+const ROLE_OPTIONS = ["ADMIN", "GESTOR", "SUPERVISOR", "AGENTE", "SOLICITANTE"];
+const ROLE_LABELS: Record<string, string> = { ADMIN: "Admin", GESTOR: "Gestão de Chamados", SUPERVISOR: "Supervisor", AGENTE: "Agente", SOLICITANTE: "Solicitante" };
 const CORES_PRESET = ["#6366f1","#f59e0b","#3b82f6","#ef4444","#10b981","#8b5cf6","#06b6d4","#ec4899","#84cc16","#f97316"];
 
 const UFS_BR = [
@@ -35,7 +35,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
   const [clienteExpandido, setClienteExpandido] = useState<string | null>(null);
 
   // Form novo usuário
-  const [novoUser, setNovoUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", clienteId: "", ufFiltro: "", localizacaoId: "" });
+  const [novoUser, setNovoUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", setor: "", clienteId: "", ufFiltro: "", localizacaoId: "" });
   const [savingUser, setSavingUser] = useState(false);
 
   // Cascata empresa → UF → localização
@@ -45,7 +45,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
 
   // Edição de usuário
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [editUser, setEditUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", ativo: true, clienteId: "", ufFiltro: "", localizacaoId: "" });
+  const [editUser, setEditUser] = useState({ name: "", email: "", password: "", role: "SOLICITANTE", setor: "", ativo: true, clienteId: "", ufFiltro: "", localizacaoId: "" });
   const [savingEdit, setSavingEdit] = useState(false);
   const [erroEdit, setErroEdit] = useState("");
 
@@ -57,7 +57,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
     setEditandoId(u.id);
     setErroEdit("");
     setEditUser({
-      name: u.name, email: u.email, password: "", role: u.role, ativo: u.ativo,
+      name: u.name, email: u.email, password: "", role: u.role, setor: u.setor ?? "", ativo: u.ativo,
       clienteId: u.clienteId ?? "", ufFiltro: u.localizacao?.uf ?? "", localizacaoId: u.localizacaoId ?? "",
     });
   }
@@ -68,8 +68,8 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
     setSavingEdit(true);
     setErroEdit("");
     const body: Record<string, unknown> = {
-      name: editUser.name, email: editUser.email, role: editUser.role, ativo: editUser.ativo,
-      clienteId: editUser.clienteId, localizacaoId: editUser.localizacaoId,
+      name: editUser.name, email: editUser.email, role: editUser.role, setor: editUser.setor || null,
+      ativo: editUser.ativo, clienteId: editUser.clienteId, localizacaoId: editUser.localizacaoId,
     };
     if (editUser.password) body.password = editUser.password;
     const res = await fetch(`/api/usuarios/${editandoId}`, {
@@ -124,7 +124,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
     if (res.ok) {
       const user = await res.json();
       setUsuarios((u) => [...u, user].sort((a, b) => a.name.localeCompare(b.name)));
-      setNovoUser({ name: "", email: "", password: "", role: "SOLICITANTE", clienteId: "", ufFiltro: "", localizacaoId: "" });
+      setNovoUser({ name: "", email: "", password: "", role: "SOLICITANTE", setor: "", clienteId: "", ufFiltro: "", localizacaoId: "" });
     }
     setSavingUser(false);
   }
@@ -254,7 +254,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
-                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value, clienteId: "", ufFiltro: "", localizacaoId: "" }))}
+                  <select value={novoUser.role} onChange={(e) => setNovoUser((u) => ({ ...u, role: e.target.value, setor: "", clienteId: "", ufFiltro: "", localizacaoId: "" }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>
@@ -378,7 +378,7 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
-                  <select value={editUser.role} onChange={(e) => setEditUser((u) => ({ ...u, role: e.target.value, clienteId: "", ufFiltro: "", localizacaoId: "" }))}
+                  <select value={editUser.role} onChange={(e) => setEditUser((u) => ({ ...u, role: e.target.value, setor: "", clienteId: "", ufFiltro: "", localizacaoId: "" }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>

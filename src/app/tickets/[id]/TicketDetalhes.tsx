@@ -51,8 +51,8 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
   const [editOv, setEditOv] = useState(ticket.ovNumero);
   const [editOs, setEditOs] = useState(ticket.osNumero);
 
-  const isAgente   = ["AGENTE", "ADMIN", "SUPERVISOR"].includes(currentUser.role);
-  const isGestor   = ["ADMIN", "SUPERVISOR"].includes(currentUser.role);
+  const isAgente   = ["AGENTE", "ADMIN", "SUPERVISOR", "GESTOR"].includes(currentUser.role);
+  const isGestor   = ["ADMIN", "SUPERVISOR", "GESTOR"].includes(currentUser.role);
   const resolvido  = !!ticket.resolvidoAt;
   const titulo = tituloTicket(ticket);
 
@@ -507,9 +507,10 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
                   <div className="flex">
                     <span className="px-2 py-1.5 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-xs text-gray-500">R$</span>
                     <input
-                      defaultValue={ticket.valorServico > 0 ? String(ticket.valorServico) : ""}
+                      defaultValue={ticket.valorServico > 0 ? ticket.valorServico.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
                       onBlur={(e) => {
-                        const v = parseFloat(e.target.value.replace(",", "."));
+                        const raw = e.target.value.replace(/\./g, "").replace(",", ".");
+                        const v = parseFloat(raw);
                         if (!isNaN(v) && v !== ticket.valorServico) updateField("valorServico", String(v));
                       }}
                       placeholder="0,00"

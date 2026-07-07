@@ -13,6 +13,7 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(SOLICITANTE)
+  setor     String?
   ativo     Boolean  @default(true)
   clienteId     String?
   cliente       Cliente?     @relation("UsuariosCliente", fields: [clienteId], references: [id])
@@ -30,6 +31,7 @@ model User {
 
 enum Role {
   ADMIN
+  GESTOR
   SUPERVISOR
   AGENTE
   SOLICITANTE

@@ -25,7 +25,7 @@ interface Props {
   userRole: string;
 }
 
-const ETAPAS_FATURADO = ["FATURADO_AGUARD"];
+const ETAPAS_FATURADO = ["FATURADO_AGUARD", "PAGO"];
 const ETAPAS_EM_FAT = ["FATURAMENTO"];
 const ETAPAS_ENCERRADO = ["ORC_REPROVADO", "CANCELADO"];
 

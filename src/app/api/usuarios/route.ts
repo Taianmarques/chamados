@@ -14,7 +14,7 @@ export async function GET() {
 
   const usuarios = await prisma.user.findMany({
     select: {
-      id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+      id: true, name: true, email: true, role: true, setor: true, ativo: true, createdAt: true,
       clienteId: true, cliente: { select: { id: true, nome: true } },
       localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
     },
@@ -42,11 +42,12 @@ export async function POST(req: NextRequest) {
       email: body.email,
       password: hash,
       role: body.role ?? "SOLICITANTE",
+      setor: body.setor || null,
       clienteId: body.clienteId || null,
       localizacaoId: body.localizacaoId || null,
     },
     select: {
-      id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+      id: true, name: true, email: true, role: true, setor: true, ativo: true, createdAt: true,
       clienteId: true, cliente: { select: { id: true, nome: true } },
       localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
     },

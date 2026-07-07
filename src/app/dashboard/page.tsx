@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   const user = session.user as { id: string; role: string; name: string };
-  if (!["ADMIN", "SUPERVISOR", "AGENTE"].includes(user.role)) redirect("/board");
+  if (!["ADMIN", "AGENTE"].includes(user.role)) redirect("/board");
 
   const tickets = await prisma.ticket.findMany({
     include: {

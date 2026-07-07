@@ -36,6 +36,7 @@ export const PIPELINE_COLUMNS = [
   // Faturamento
   { id: "FATURAMENTO",           label: "Faturamento Financeiro/Adm",                            cor: "#059669", grupo: "faturamento" },
   { id: "FATURADO_AGUARD",       label: "Faturado Aguardando Pagamento Financeiro/Adm",          cor: "#047857", grupo: "faturamento" },
+  { id: "PAGO",                  label: "Pago",                                                   cor: "#16a34a", grupo: "faturamento" },
   // Encerrado
   { id: "ORC_REPROVADO",         label: "Orçamento Reprovado",                                   cor: "#dc2626", grupo: "reprovado" },
 ] as const;
@@ -46,16 +47,28 @@ export const STATUS_LABELS = Object.fromEntries(PIPELINE_COLUMNS.map((c) => [c.i
 
 export const SETORES = [
   {
-    id: "SUPERVISAO_REFRIG",
-    label: "Supervisão de Refrigeração",
+    id: "CHAMADOS",
+    label: "Chamados",
     cor: "#3b82f6",
-    colunas: ["CHAMADO_REFRIG", "ORC_APROV_REFRIG", "COMPRAS_REFRIG", "CORRETIVA_REFRIG"],
+    colunas: ["CHAMADO_REFRIG", "CHAMADO_CIVIL", "CHAMADO_BEBEDOURO", "CHAMADO_CAPEX"],
   },
   {
-    id: "SUPERVISAO_CIVIL",
-    label: "Supervisão Civil/Elétrica/Marcenaria",
-    cor: "#6366f1",
-    colunas: ["CHAMADO_CIVIL", "ORC_APROV_CIVIL", "COMPRAS_CIVIL", "CORRETIVA_CIVIL"],
+    id: "ORCAMENTO",
+    label: "Orçamento",
+    cor: "#f59e0b",
+    colunas: ["SOLIC_ORCAMENTO", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD"],
+  },
+  {
+    id: "ORC_APROVADOS",
+    label: "Orçamentos Aprovados",
+    cor: "#10b981",
+    colunas: ["ORC_APROV_REFRIG", "ORC_APROV_CIVIL", "ORC_APROV_BEBEDOURO", "ORC_APROV_CAPEX"],
+  },
+  {
+    id: "CORRETIVA",
+    label: "Corretiva",
+    cor: "#ef4444",
+    colunas: ["CORRETIVA_REFRIG", "CORRETIVA_CIVIL", "CORRETIVA_BEBEDOURO", "CORRETIVA_CAPEX", "CORRETIVA_SEM_APROV", "EMERGENCIAL"],
   },
   {
     id: "VALIDACAO",
@@ -70,22 +83,16 @@ export const SETORES = [
     colunas: ["SOLIC_COMPRAS", "COMPRAS_REFRIG", "COMPRAS_CIVIL", "COMPRAS_BEBEDOURO", "COMPRAS_CAPEX"],
   },
   {
-    id: "ADMINISTRACAO",
-    label: "Administração",
-    cor: "#a855f7",
-    colunas: [
-      "CHAMADO_BEBEDOURO", "CHAMADO_CAPEX",
-      "ORC_APROV_BEBEDOURO", "ORC_APROV_CAPEX",
-      "COMPRAS_BEBEDOURO", "COMPRAS_CAPEX",
-      "CORRETIVA_BEBEDOURO", "CORRETIVA_CAPEX",
-      "CORRETIVA_SEM_APROV", "EMERGENCIAL",
-    ],
-  },
-  {
     id: "FATURAMENTO",
     label: "Faturamento",
     cor: "#059669",
-    colunas: ["FATURAMENTO", "FATURADO_AGUARD"],
+    colunas: ["FATURAMENTO", "FATURADO_AGUARD", "PAGO"],
+  },
+  {
+    id: "ENCERRADOS",
+    label: "Cancelados/Reprovados",
+    cor: "#dc2626",
+    colunas: ["ORC_REPROVADO", "CANCELADO"],
   },
 ] as const;
 

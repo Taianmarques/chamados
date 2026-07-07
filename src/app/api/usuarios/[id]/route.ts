@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 const USUARIO_SELECT = {
-  id: true, name: true, email: true, role: true, ativo: true, createdAt: true,
+  id: true, name: true, email: true, role: true, setor: true, ativo: true, createdAt: true,
   clienteId: true, cliente: { select: { id: true, nome: true } },
   localizacaoId: true, localizacao: { select: { id: true, nome: true, uf: true } },
 };
@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.email !== undefined) data.email = body.email;
   if (body.role !== undefined) data.role = body.role;
   if (body.ativo !== undefined) data.ativo = body.ativo;
+  if (body.setor !== undefined) data.setor = body.setor || null;
   if (body.clienteId !== undefined) data.clienteId = body.clienteId || null;
   if (body.localizacaoId !== undefined) data.localizacaoId = body.localizacaoId || null;
   if (body.password) data.password = await bcrypt.hash(body.password, 10);

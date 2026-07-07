@@ -20,6 +20,7 @@ type NotificacaoItem = {
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
+  GESTOR: "Gestão de Chamados",
   SUPERVISOR: "Supervisor",
   AGENTE: "Agente",
   SOLICITANTE: "Solicitante",
@@ -69,12 +70,18 @@ export default function Navbar({ userName, userRole }: Props) {
 
   const links = userRole === "SOLICITANTE" ? [
     { href: "/portal", label: "Meus Chamados", live: false },
+  ] : userRole === "SUPERVISOR" ? [
+    { href: "/tv", label: "Ao Vivo", live: true },
+    { href: "/relatorios", label: "Relatórios", live: false },
+  ] : userRole === "GESTOR" ? [
+    { href: "/board", label: "Pipeline", live: false },
+    { href: "/tv", label: "Ao Vivo", live: true },
   ] : [
     { href: "/board", label: "Board", live: false },
-    ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/dashboard", label: "Dashboard", live: false }] : []),
-    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/relatorios", label: "Relatórios", live: false }] : []),
-    ...(["ADMIN", "SUPERVISOR"].includes(userRole) ? [{ href: "/importar", label: "Importar", live: false }] : []),
-    ...(["ADMIN", "SUPERVISOR", "AGENTE"].includes(userRole) ? [{ href: "/tv", label: "Ao Vivo", live: true }] : []),
+    ...(["ADMIN", "AGENTE"].includes(userRole) ? [{ href: "/dashboard", label: "Dashboard", live: false }] : []),
+    ...(userRole === "ADMIN" ? [{ href: "/relatorios", label: "Relatórios", live: false }] : []),
+    ...(userRole === "ADMIN" ? [{ href: "/importar", label: "Importar", live: false }] : []),
+    ...(["ADMIN", "AGENTE"].includes(userRole) ? [{ href: "/tv", label: "Ao Vivo", live: true }] : []),
     ...(userRole === "ADMIN" ? [{ href: "/admin", label: "Admin", live: false }] : []),
   ];
 

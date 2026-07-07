@@ -108,8 +108,8 @@ export default function PortalClient({ userName, cliente, localizacaoVinculada, 
     return () => { clearInterval(intervalId); setLiveConnected(false); };
   }, []);
 
-  const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD", "ORC_REPROVADO", "CANCELADO"].includes(t.status));
-  const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD", "ORC_REPROVADO", "CANCELADO"].includes(t.status));
+  const faturados = tickets.filter((t) => t.resolvidoAt || ["FATURAMENTO", "FATURADO_AGUARD", "PAGO", "ORC_REPROVADO", "CANCELADO"].includes(t.status));
+  const emAberto  = tickets.filter((t) => !t.resolvidoAt && !["FATURAMENTO", "FATURADO_AGUARD", "PAGO", "ORC_REPROVADO", "CANCELADO"].includes(t.status));
 
   function adicionarArquivos(novos: FileList | null) {
     if (!novos) return;

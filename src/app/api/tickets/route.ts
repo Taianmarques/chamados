@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
   if (clienteId) where.clienteId = clienteId;
   if (uf) where.localizacao = { uf };
   if (user.role === "SOLICITANTE") where.solicitanteId = user.id;
+  if (user.role === "SUPERVISOR") where.agenteId = user.id;
 
   if (periodo) {
     const agora = new Date();

@@ -17,6 +17,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.setor = (user as { setor?: string }).setor ?? null;
       }
       return token;
     },
@@ -24,6 +25,7 @@ export const authConfig: NextAuthConfig = {
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        (session.user as { setor?: string | null }).setor = token.setor as string | null;
       }
       return session;
     },
