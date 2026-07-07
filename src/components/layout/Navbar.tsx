@@ -71,8 +71,10 @@ export default function Navbar({ userName, userRole }: Props) {
   const links = userRole === "SOLICITANTE" ? [
     { href: "/portal", label: "Meus Chamados", live: false },
   ] : userRole === "SUPERVISOR" ? [
-    { href: "/tv", label: "Ao Vivo", live: true },
+    { href: "/board", label: "Board", live: false },
     { href: "/relatorios", label: "Relatórios", live: false },
+    { href: "/importar", label: "Importar", live: false },
+    { href: "/tv", label: "Ao Vivo", live: true },
   ] : userRole === "GESTOR" ? [
     { href: "/board", label: "Pipeline", live: false },
     { href: "/tv", label: "Ao Vivo", live: true },

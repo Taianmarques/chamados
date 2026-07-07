@@ -7,7 +7,6 @@ export default async function BoardPage() {
   if (!session) redirect("/login");
   const role = (session.user as { role: string }).role;
   if (role === "SOLICITANTE") redirect("/portal");
-  if (role === "SUPERVISOR") redirect("/tv");
 
   return (
     <BoardClient
