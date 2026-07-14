@@ -336,7 +336,7 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
                           )}
                           <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleString("pt-BR")}</span>
                         </div>
-                        <div className={`text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 ${c.interno ? "border border-yellow-200" : ""}`}>
+                        <div className={`text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 whitespace-pre-wrap ${c.interno ? "border border-yellow-200" : ""}`}>
                           {c.texto}
                         </div>
                       </div>

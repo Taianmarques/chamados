@@ -103,6 +103,7 @@ export interface Ticket {
   numero: number;
   descricao: string;
   status: string;
+  ordem: number;
   prioridade: Prioridade;
   ticketExterno: string;
   ovNumero: string;

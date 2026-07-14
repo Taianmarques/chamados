@@ -64,6 +64,7 @@ model Ticket {
   numero        Int        @unique
   descricao     String     @default("")
   status        String     @default("CHAMADO_REFRIG")
+  ordem         Float      @default(0)
   prioridade    Prioridade @default(MEDIA)
   ticketExterno String     @default("")
   ovNumero      String     @default("")

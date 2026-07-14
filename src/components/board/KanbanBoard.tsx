@@ -3,7 +3,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import {
   DndContext, DragEndEvent, DragOverEvent, DragStartEvent,
-  PointerSensor, useSensor, useSensors, DragOverlay, closestCorners,
+  PointerSensor, useSensor, useSensors, DragOverlay,
+  pointerWithin, rectIntersection, type CollisionDetection,
 } from "@dnd-kit/core";
 import KanbanColumn from "./KanbanColumn";
 import TicketCard from "./TicketCard";
@@ -45,6 +46,12 @@ const GRUPO_BG: Record<string, string> = {
 export default function KanbanBoard() {
   const { tickets, setTickets, setLoading, updateTicket, filtroClienteId, filtroUf, filtroPrioridade, filtroSetor, filtroPeriodo, busca } = useBoardStore();
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+  const [dragging, setDragging] = useState(false);
+  // Guarda o último destino calculado durante o dragOver: o preview ao vivo
+  // reflui o layout (cards trocam de lugar), então no instante exato do drop
+  // o pointer pode não estar mais sobre nenhum droppable válido (`over` nulo).
+  // Nesse caso usamos este último destino conhecido em vez de descartar o drop.
+  const lastDestinoRef = useRef<{ status: string; ordem: number } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -74,36 +81,81 @@ export default function KanbanBoard() {
       )
     : tickets;
 
+  // Prioriza a posição real do cursor; cai para rectIntersection só se o
+  // ponteiro estiver momentaneamente fora de qualquer coluna (drag rápido).
+  // closestCorners sozinho errava a coluna quando havia grande diferença de
+  // altura entre colunas vizinhas (ex.: uma cheia e outra vazia).
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    return rectIntersection(args);
+  };
+
+  // Calcula o status e a posição (ordem) de destino ao pairar/soltar sobre uma
+  // coluna vazia (vai para o fim) ou sobre um card específico (entra antes dele).
+  // Usado tanto no preview ao vivo (dragOver) quanto na persistência final (dragEnd).
+  function computeDestino(activeId: string, overId: string) {
+    const isColumn = PIPELINE_COLUMNS.some((c) => c.id === overId);
+    const targetTicket = !isColumn ? tickets.find((t) => t.id === overId) : null;
+    const newStatus = isColumn ? overId : targetTicket?.status;
+    if (!newStatus) return null;
+
+    const destino = tickets
+      .filter((t) => t.status === newStatus && t.id !== activeId)
+      .sort((a, b) => a.ordem - b.ordem);
+
+    let ordem: number;
+    if (targetTicket) {
+      const idx = destino.findIndex((t) => t.id === targetTicket.id);
+      const anterior = destino[idx - 1];
+      ordem = anterior ? (anterior.ordem + targetTicket.ordem) / 2 : targetTicket.ordem - 10;
+    } else {
+      const ultimo = destino[destino.length - 1];
+      ordem = ultimo ? ultimo.ordem + 10 : 0;
+    }
+    return { status: newStatus, ordem };
+  }
+
   function handleDragStart({ active }: DragStartEvent) {
     setActiveTicket(tickets.find((t) => t.id === active.id) ?? null);
+    setDragging(true);
+    lastDestinoRef.current = null;
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return;
-    const overId = over.id as string;
-    const isColumn = PIPELINE_COLUMNS.some((c) => c.id === overId);
-    if (!isColumn) return;
+    if (!over || over.id === active.id) return;
+    const destino = computeDestino(active.id as string, over.id as string);
+    if (!destino) return;
+    lastDestinoRef.current = destino;
     const ticket = tickets.find((t) => t.id === active.id);
-    if (ticket && ticket.status !== overId) {
-      updateTicket(ticket.id, { status: overId });
+    if (ticket && (ticket.status !== destino.status || ticket.ordem !== destino.ordem)) {
+      updateTicket(ticket.id, destino);
     }
   }
 
   async function handleDragEnd({ active, over }: DragEndEvent) {
+    // Guarda o ticket original antes de qualquer preview otimista do
+    // handleDragOver, que já reescreve status/ordem no estado local
+    // enquanto o card ainda está sendo arrastado.
+    const original = activeTicket;
     setActiveTicket(null);
-    if (!over) return;
-    const overId = over.id as string;
-    const isColumn = PIPELINE_COLUMNS.some((c) => c.id === overId);
-    const targetTicket = tickets.find((t) => t.id === overId);
-    const newStatus = isColumn ? overId : (targetTicket?.status ?? null);
-    if (!newStatus) return;
-    const ticket = tickets.find((t) => t.id === active.id);
-    if (!ticket || ticket.status === newStatus) return;
-    updateTicket(ticket.id, { status: newStatus });
-    await fetch(`/api/tickets/${ticket.id}`, {
+    setDragging(false);
+    if (!original) return;
+
+    // O preview ao vivo reflui o layout durante o drag; no instante do drop o
+    // pointer pode não estar mais sobre nenhum droppable (`over` nulo ou
+    // diferente do esperado). Usamos o último destino válido computado no
+    // dragOver como fallback, para nunca perder silenciosamente o resultado.
+    const overId = over && over.id !== active.id ? (over.id as string) : null;
+    const destino = (overId ? computeDestino(active.id as string, overId) : null) ?? lastDestinoRef.current;
+    lastDestinoRef.current = null;
+    if (!destino) return;
+    if (original.status === destino.status && original.ordem === destino.ordem) return;
+    updateTicket(original.id, destino);
+    await fetch(`/api/tickets/${original.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify(destino),
     });
   }
 
@@ -132,8 +184,8 @@ export default function KanbanBoard() {
     return () => ro.disconnect();
   }, [tickets, filtroSetor]);
 
-  // Filtrar colunas pelo setor selecionado
-  const colunasVisiveis = filtroSetor
+  // Filtrar colunas pelo setor selecionado (ignorado durante o drag, para permitir soltar em qualquer coluna)
+  const colunasVisiveis = filtroSetor && !dragging
     ? PIPELINE_COLUMNS.filter((c) =>
         (SETORES.find((s) => s.id === filtroSetor)?.colunas as readonly string[]).includes(c.id)
       )
@@ -143,8 +195,15 @@ export default function KanbanBoard() {
   const grupos = [...new Set(colunasVisiveis.map((c) => c.grupo))];
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners}
-      onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy}
+      onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        // Reverte o preview otimista do dragOver, já que o cancelamento não passa por handleDragEnd
+        if (activeTicket) updateTicket(activeTicket.id, { status: activeTicket.status, ordem: activeTicket.ordem });
+        lastDestinoRef.current = null;
+        setActiveTicket(null);
+        setDragging(false);
+      }}>
 
       {/* Barra de rolagem superior */}
       <div
@@ -174,7 +233,7 @@ export default function KanbanBoard() {
                   <KanbanColumn
                     key={column.id}
                     column={column}
-                    tickets={ticketsFiltrados.filter((t) => t.status === column.id)}
+                    tickets={ticketsFiltrados.filter((t) => t.status === column.id).sort((a, b) => a.ordem - b.ordem)}
                   />
                 ))}
               </div>

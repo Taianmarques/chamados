@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const tickets = await prisma.ticket.findMany({
     where,
     include: TICKET_INCLUDE,
-    orderBy: [{ prioridade: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ ordem: "asc" }],
   });
 
   return NextResponse.json(tickets);
@@ -83,6 +83,10 @@ export async function POST(req: NextRequest) {
   const ultimo = await prisma.ticket.findFirst({ orderBy: { numero: "desc" } });
   const numero = (ultimo?.numero ?? 0) + 1;
 
+  const status = body.status ?? "CHAMADO_REFRIG";
+  const primeiro = await prisma.ticket.findFirst({ where: { status }, orderBy: { ordem: "asc" } });
+  const ordem = (primeiro?.ordem ?? 0) - 10;
+
   const ticket = await prisma.ticket.create({
     data: {
       numero,
@@ -90,7 +94,8 @@ export async function POST(req: NextRequest) {
       prioridade: body.prioridade ?? "MEDIA",
       clienteId: body.clienteId,
       localizacaoId: body.localizacaoId,
-      status: body.status ?? "CHAMADO_REFRIG",
+      status,
+      ordem,
       ticketExterno: body.ticketExterno ?? "",
       ovNumero: body.ovNumero ?? "",
       osNumero: body.osNumero ?? "",
