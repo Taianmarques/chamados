@@ -130,6 +130,7 @@ model Comment {
   id        String   @id @default(cuid())
   texto     String
   interno   Boolean  @default(false)
+  categoria String   @default("GERAL")
   ticketId  String
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   autorId   String

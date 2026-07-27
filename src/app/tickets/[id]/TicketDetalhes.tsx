@@ -19,7 +19,7 @@ type Ticket = {
   solicitante: { id: string; name: string };
   agente: { id: string; name: string } | null;
   comentarios: {
-    id: string; texto: string; interno: boolean; createdAt: string;
+    id: string; texto: string; interno: boolean; categoria: string; createdAt: string;
     autor: { id: string; name: string; role: string };
   }[];
   anexos: {
@@ -40,6 +40,9 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
   const [ticket, setTicket] = useState(initial);
   const [comentario, setComentario] = useState("");
   const [interno, setInterno] = useState(false);
+  const [comentarioProposta, setComentarioProposta] = useState("");
+  const [internoProposta, setInternoProposta] = useState(false);
+  const [sendingPropostaComment, setSendingPropostaComment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -126,7 +129,7 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
     const res = await fetch(`/api/tickets/${ticket.id}/comentarios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texto: comentario, interno }),
+      body: JSON.stringify({ texto: comentario, interno, categoria: "GERAL" }),
     });
     if (res.ok) {
       const novo = await res.json();
@@ -134,6 +137,23 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
       setComentario("");
     }
     setSendingComment(false);
+  }
+
+  async function enviarComentarioProposta(e: React.FormEvent) {
+    e.preventDefault();
+    if (!comentarioProposta.trim()) return;
+    setSendingPropostaComment(true);
+    const res = await fetch(`/api/tickets/${ticket.id}/comentarios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto: comentarioProposta, interno: internoProposta, categoria: "PROPOSTA" }),
+    });
+    if (res.ok) {
+      const novo = await res.json();
+      setTicket((t) => ({ ...t, comentarios: [...t.comentarios, novo] }));
+      setComentarioProposta("");
+    }
+    setSendingPropostaComment(false);
   }
 
   async function uploadArquivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -317,12 +337,12 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
             {/* Comentários */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
               <h2 className="text-sm font-semibold text-gray-900 mb-4">
-                Comentários ({ticket.comentarios.filter((c) => !c.interno || isAgente).length})
+                Comentários ({ticket.comentarios.filter((c) => c.categoria !== "PROPOSTA" && (!c.interno || isAgente)).length})
               </h2>
 
               <div className="space-y-4 mb-6">
                 {ticket.comentarios
-                  .filter((c) => !c.interno || isAgente)
+                  .filter((c) => c.categoria !== "PROPOSTA" && (!c.interno || isAgente))
                   .map((c) => (
                     <div key={c.id} className="flex gap-3">
                       <div className="w-8 h-8 rounded-full bg-indigo-100 flex-shrink-0 flex items-center justify-center text-xs font-bold text-indigo-700">
@@ -342,7 +362,7 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
                       </div>
                     </div>
                   ))}
-                {ticket.comentarios.filter((c) => !c.interno || isAgente).length === 0 && (
+                {ticket.comentarios.filter((c) => c.categoria !== "PROPOSTA" && (!c.interno || isAgente)).length === 0 && (
                   <p className="text-sm text-gray-400 text-center py-4">Nenhum comentário ainda</p>
                 )}
               </div>
@@ -368,6 +388,65 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
                     className="ml-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     {sendingComment ? "Enviando..." : "Comentar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Solicitação de Propostas */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                Solicitação de Propostas ({ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length})
+              </h2>
+
+              <div className="space-y-4 mb-6">
+                {ticket.comentarios
+                  .filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente))
+                  .map((c) => (
+                    <div key={c.id} className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex-shrink-0 flex items-center justify-center text-xs font-bold text-amber-700">
+                        {c.autor.name[0]?.toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-sm font-medium text-gray-900">{c.autor.name}</span>
+                          {c.interno && (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Nota interna</span>
+                          )}
+                          <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleString("pt-BR")}</span>
+                        </div>
+                        <div className={`text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 whitespace-pre-wrap ${c.interno ? "border border-yellow-200" : ""}`}>
+                          {c.texto}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-4">Nenhuma solicitação de proposta ainda</p>
+                )}
+              </div>
+
+              <form onSubmit={enviarComentarioProposta} className="space-y-3">
+                <textarea
+                  value={comentarioProposta}
+                  onChange={(e) => setComentarioProposta(e.target.value)}
+                  rows={3}
+                  placeholder="Escreva uma solicitação de proposta..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+                <div className="flex items-center justify-between">
+                  {isAgente && (
+                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                      <input type="checkbox" checked={internoProposta} onChange={(e) => setInternoProposta(e.target.checked)} className="rounded" />
+                      Nota interna
+                    </label>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={sendingPropostaComment || !comentarioProposta.trim()}
+                    className="ml-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    {sendingPropostaComment ? "Enviando..." : "Solicitar"}
                   </button>
                 </div>
               </form>

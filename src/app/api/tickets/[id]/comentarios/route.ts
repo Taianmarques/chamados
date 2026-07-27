@@ -12,14 +12,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const user = session.user as { id: string; role: string };
 
-  // Nota interna só para agentes/admin/supervisor
+  // Nota interna só para agentes/admin/supervisor/gestor
   const interno =
-    body.interno === true && ["AGENTE", "ADMIN", "SUPERVISOR"].includes(user.role);
+    body.interno === true && ["AGENTE", "ADMIN", "SUPERVISOR", "GESTOR"].includes(user.role);
+  const categoria = body.categoria === "PROPOSTA" ? "PROPOSTA" : "GERAL";
 
   const comentario = await prisma.comment.create({
     data: {
       texto: body.texto,
       interno,
+      categoria,
       ticketId: id,
       autorId: user.id,
     },
