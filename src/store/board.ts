@@ -10,6 +10,7 @@ export const PIPELINE_COLUMNS = [
   { id: "CHAMADO_CAPEX",         label: "Chamado Capex",                                         cor: "#a855f7", grupo: "chamado" },
   // Orçamento
   { id: "SOLIC_ORCAMENTO",       label: "Solicitação de Orçamento - Orçamentista",               cor: "#f59e0b", grupo: "orcamento" },
+  { id: "REAVAL_SUPERVISOR",     label: "Reavaliação do Supervisor",                             cor: "#eab308", grupo: "orcamento" },
   { id: "VALID_ORCAMENTO",       label: "Validação de Orçamento - Gestor",                       cor: "#f97316", grupo: "orcamento" },
   { id: "ORCAMENTOS_VALIDADOS",  label: "Orçamentos Validados - Gestor",                         cor: "#f97316", grupo: "orcamento" },
   { id: "ORC_ENVIADO_AGUARD",    label: "Orçamento Enviado Aguardando Aprovação - Orçamentista", cor: "#fb923c", grupo: "orcamento" },
@@ -56,7 +57,7 @@ export const SETORES = [
     id: "ORCAMENTO",
     label: "Orçamento",
     cor: "#f59e0b",
-    colunas: ["SOLIC_ORCAMENTO", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD"],
+    colunas: ["SOLIC_ORCAMENTO", "REAVAL_SUPERVISOR", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD"],
   },
   {
     id: "ORC_APROVADOS",
@@ -74,7 +75,7 @@ export const SETORES = [
     id: "VALIDACAO",
     label: "Validação",
     cor: "#f97316",
-    colunas: ["SOLIC_ORCAMENTO", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD", "ORC_REPROVADO"],
+    colunas: ["SOLIC_ORCAMENTO", "REAVAL_SUPERVISOR", "VALID_ORCAMENTO", "ORCAMENTOS_VALIDADOS", "ORC_ENVIADO_AGUARD", "ORC_REPROVADO"],
   },
   {
     id: "COMPRAS",
