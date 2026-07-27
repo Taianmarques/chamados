@@ -43,6 +43,7 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
   const [comentarioProposta, setComentarioProposta] = useState("");
   const [internoProposta, setInternoProposta] = useState(false);
   const [sendingPropostaComment, setSendingPropostaComment] = useState(false);
+  const [propostaAberta, setPropostaAberta] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -393,63 +394,79 @@ export default function TicketDetalhes({ ticket: initial, agentes, localizacoes,
               </form>
             </div>
 
-            {/* Solicitação de Propostas */}
+            {/* Solicitação de Propostas (acordeon) */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">
-                Solicitação de Propostas ({ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length})
-              </h2>
+              <button
+                type="button"
+                onClick={() => setPropostaAberta((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 text-left"
+              >
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Solicitação de Propostas ({ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length})
+                </h2>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${propostaAberta ? "rotate-180" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-              <div className="space-y-4 mb-6">
-                {ticket.comentarios
-                  .filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente))
-                  .map((c) => (
-                    <div key={c.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-amber-100 flex-shrink-0 flex items-center justify-center text-xs font-bold text-amber-700">
-                        {c.autor.name[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-medium text-gray-900">{c.autor.name}</span>
-                          {c.interno && (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Nota interna</span>
-                          )}
-                          <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleString("pt-BR")}</span>
+              <div className={`grid transition-all duration-300 ease-in-out ${propostaAberta ? "grid-rows-[1fr] opacity-100 mt-4" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-4 mb-6">
+                    {ticket.comentarios
+                      .filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente))
+                      .map((c) => (
+                        <div key={c.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full bg-amber-100 flex-shrink-0 flex items-center justify-center text-xs font-bold text-amber-700">
+                            {c.autor.name[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-sm font-medium text-gray-900">{c.autor.name}</span>
+                              {c.interno && (
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Nota interna</span>
+                              )}
+                              <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleString("pt-BR")}</span>
+                            </div>
+                            <div className={`text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 whitespace-pre-wrap ${c.interno ? "border border-yellow-200" : ""}`}>
+                              {c.texto}
+                            </div>
+                          </div>
                         </div>
-                        <div className={`text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 whitespace-pre-wrap ${c.interno ? "border border-yellow-200" : ""}`}>
-                          {c.texto}
-                        </div>
-                      </div>
+                      ))}
+                    {ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-4">Nenhuma solicitação de proposta ainda</p>
+                    )}
+                  </div>
+
+                  <form onSubmit={enviarComentarioProposta} className="space-y-3">
+                    <textarea
+                      value={comentarioProposta}
+                      onChange={(e) => setComentarioProposta(e.target.value)}
+                      rows={3}
+                      placeholder="Escreva uma solicitação de proposta..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                    />
+                    <div className="flex items-center justify-between">
+                      {isAgente && (
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <input type="checkbox" checked={internoProposta} onChange={(e) => setInternoProposta(e.target.checked)} className="rounded" />
+                          Nota interna
+                        </label>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={sendingPropostaComment || !comentarioProposta.trim()}
+                        className="ml-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        {sendingPropostaComment ? "Enviando..." : "Solicitar"}
+                      </button>
                     </div>
-                  ))}
-                {ticket.comentarios.filter((c) => c.categoria === "PROPOSTA" && (!c.interno || isAgente)).length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">Nenhuma solicitação de proposta ainda</p>
-                )}
-              </div>
-
-              <form onSubmit={enviarComentarioProposta} className="space-y-3">
-                <textarea
-                  value={comentarioProposta}
-                  onChange={(e) => setComentarioProposta(e.target.value)}
-                  rows={3}
-                  placeholder="Escreva uma solicitação de proposta..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                />
-                <div className="flex items-center justify-between">
-                  {isAgente && (
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input type="checkbox" checked={internoProposta} onChange={(e) => setInternoProposta(e.target.checked)} className="rounded" />
-                      Nota interna
-                    </label>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={sendingPropostaComment || !comentarioProposta.trim()}
-                    className="ml-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    {sendingPropostaComment ? "Enviando..." : "Solicitar"}
-                  </button>
+                  </form>
                 </div>
-              </form>
+              </div>
             </div>
 
             {/* Anexos */}
