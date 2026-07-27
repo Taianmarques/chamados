@@ -8,6 +8,7 @@ import {
 } from "@dnd-kit/core";
 import KanbanColumn from "./KanbanColumn";
 import TicketCard from "./TicketCard";
+import MobileTicketCard from "./MobileTicketCard";
 import { useBoardStore, PIPELINE_COLUMNS, SETORES, type Ticket } from "@/store/board";
 
 const GRUPO_LABELS: Record<string, string> = {
@@ -47,6 +48,7 @@ export default function KanbanBoard() {
   const { tickets, setTickets, setLoading, updateTicket, filtroClienteId, filtroUf, filtroPrioridade, filtroSetor, filtroPeriodo, busca } = useBoardStore();
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [mobileColuna, setMobileColuna] = useState<string>(PIPELINE_COLUMNS[0].id);
   // Guarda o último destino calculado durante o dragOver: o preview ao vivo
   // reflui o layout (cards trocam de lugar), então no instante exato do drop
   // o pointer pode não estar mais sobre nenhum droppable válido (`over` nulo).
@@ -159,6 +161,20 @@ export default function KanbanBoard() {
     });
   }
 
+  // Mobile não usa drag-and-drop (colunas ficam empilhadas, uma por vez): mudar
+  // de etapa é feito pelo seletor no próprio card, reaproveitando computeDestino
+  // (sempre entra no fim da coluna de destino, como um drop na área vazia dela).
+  async function moverTicketMobile(ticket: Ticket, novoStatus: string) {
+    const destino = computeDestino(ticket.id, novoStatus);
+    if (!destino || destino.status === ticket.status) return;
+    updateTicket(ticket.id, destino);
+    await fetch(`/api/tickets/${ticket.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(destino),
+    });
+  }
+
   const topScrollRef = useRef<HTMLDivElement>(null);
   const boardScrollRef = useRef<HTMLDivElement>(null);
   const topInnerRef = useRef<HTMLDivElement>(null);
@@ -194,57 +210,112 @@ export default function KanbanBoard() {
   // Agrupar colunas
   const grupos = [...new Set(colunasVisiveis.map((c) => c.grupo))];
 
+  // Mobile: uma coluna por vez, selecionada por chips, sem drag-and-drop
+  const colunaMobileAtual = colunasVisiveis.find((c) => c.id === mobileColuna) ?? colunasVisiveis[0];
+  const ticketsMobile = colunaMobileAtual
+    ? ticketsFiltrados.filter((t) => t.status === colunaMobileAtual.id).sort((a, b) => a.ordem - b.ordem)
+    : [];
+
   return (
-    <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy}
-      onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        // Reverte o preview otimista do dragOver, já que o cancelamento não passa por handleDragEnd
-        if (activeTicket) updateTicket(activeTicket.id, { status: activeTicket.status, ordem: activeTicket.ordem });
-        lastDestinoRef.current = null;
-        setActiveTicket(null);
-        setDragging(false);
-      }}>
+    <>
+      {/* Desktop: board kanban com drag-and-drop */}
+      <div className="hidden md:block">
+        <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy}
+          onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            // Reverte o preview otimista do dragOver, já que o cancelamento não passa por handleDragEnd
+            if (activeTicket) updateTicket(activeTicket.id, { status: activeTicket.status, ordem: activeTicket.ordem });
+            lastDestinoRef.current = null;
+            setActiveTicket(null);
+            setDragging(false);
+          }}>
 
-      {/* Barra de rolagem superior */}
-      <div
-        ref={topScrollRef}
-        onScroll={syncFromTop}
-        className="overflow-x-auto mb-1"
-        style={{ height: 14 }}
-      >
-        <div ref={topInnerRef} style={{ height: 1 }} />
-      </div>
+          {/* Barra de rolagem superior */}
+          <div
+            ref={topScrollRef}
+            onScroll={syncFromTop}
+            className="overflow-x-auto mb-1"
+            style={{ height: 14 }}
+          >
+            <div ref={topInnerRef} style={{ height: 1 }} />
+          </div>
 
-      <div ref={boardScrollRef} onScroll={syncFromBoard} className="flex gap-3 overflow-x-auto pb-6 px-1">
-        {grupos.map((grupo) => {
-          const cols = colunasVisiveis.filter((c) => c.grupo === grupo);
-          return (
-            <div key={grupo} className={`flex gap-2 p-2 rounded-2xl border ${GRUPO_BG[grupo]} ${GRUPO_BORDER[grupo]}`}>
-              <div className="flex gap-2">
-                {/* Grupo label vertical */}
-                <div className="flex items-start pt-1">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 writing-mode-vertical"
-                    style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", whiteSpace: "nowrap" }}>
-                    {GRUPO_LABELS[grupo]}
-                  </span>
+          <div ref={boardScrollRef} onScroll={syncFromBoard} className="flex gap-3 overflow-x-auto pb-6 px-1">
+            {grupos.map((grupo) => {
+              const cols = colunasVisiveis.filter((c) => c.grupo === grupo);
+              return (
+                <div key={grupo} className={`flex gap-2 p-2 rounded-2xl border ${GRUPO_BG[grupo]} ${GRUPO_BORDER[grupo]}`}>
+                  <div className="flex gap-2">
+                    {/* Grupo label vertical */}
+                    <div className="flex items-start pt-1">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 writing-mode-vertical"
+                        style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", whiteSpace: "nowrap" }}>
+                        {GRUPO_LABELS[grupo]}
+                      </span>
+                    </div>
+                    {/* Colunas do grupo */}
+                    {cols.map((column) => (
+                      <KanbanColumn
+                        key={column.id}
+                        column={column}
+                        tickets={ticketsFiltrados.filter((t) => t.status === column.id).sort((a, b) => a.ordem - b.ordem)}
+                      />
+                    ))}
+                  </div>
                 </div>
-                {/* Colunas do grupo */}
-                {cols.map((column) => (
-                  <KanbanColumn
-                    key={column.id}
-                    column={column}
-                    tickets={ticketsFiltrados.filter((t) => t.status === column.id).sort((a, b) => a.ordem - b.ordem)}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+
+          <DragOverlay>
+            {activeTicket && <TicketCard ticket={activeTicket} overlay />}
+          </DragOverlay>
+        </DndContext>
       </div>
 
-      <DragOverlay>
-        {activeTicket && <TicketCard ticket={activeTicket} overlay />}
-      </DragOverlay>
-    </DndContext>
+      {/* Mobile: uma etapa por vez, selecionada por chips, sem drag-and-drop */}
+      <div className="md:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+          {colunasVisiveis.map((c) => {
+            const count = ticketsFiltrados.filter((t) => t.status === c.id).length;
+            const ativo = c.id === colunaMobileAtual?.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setMobileColuna(c.id)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                  ativo ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-300"
+                }`}
+                style={ativo ? { backgroundColor: c.cor } : {}}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: ativo ? "rgba(255,255,255,0.7)" : c.cor }}
+                />
+                {c.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${ativo ? "bg-white/20" : "bg-gray-100 text-gray-500"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-2 pb-6 pt-2">
+          {ticketsMobile.map((ticket) => (
+            <MobileTicketCard
+              key={ticket.id}
+              ticket={ticket}
+              onMover={(novoStatus) => moverTicketMobile(ticket, novoStatus)}
+            />
+          ))}
+          {ticketsMobile.length === 0 && (
+            <div className="flex items-center justify-center h-24 text-sm text-gray-400">
+              Nenhum chamado nesta etapa
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

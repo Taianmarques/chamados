@@ -88,20 +88,20 @@ export default function Navbar({ userName, userRole }: Props) {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4">
-      <div className="flex items-center gap-2 mr-4">
+    <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 mr-1 sm:mr-4 flex-shrink-0">
         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
           S
         </div>
         <span className="font-semibold text-gray-900 text-sm hidden sm:block">Chamados</span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">
         {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 flex-shrink-0 ${
               link.live
                 ? pathname.startsWith(link.href)
                   ? "bg-emerald-50 text-emerald-700"
@@ -119,7 +119,7 @@ export default function Navbar({ userName, userRole }: Props) {
         ))}
       </div>
 
-      <div className="ml-auto relative">
+      <div className="relative flex-shrink-0">
         <button
           onClick={() => setNotifOpen((v) => !v)}
           className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -171,7 +171,7 @@ export default function Navbar({ userName, userRole }: Props) {
         )}
       </div>
 
-      <div className="relative">
+      <div className="relative flex-shrink-0">
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
