@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Nota interna só para agentes/admin/supervisor/gestor
   const interno =
     body.interno === true && ["AGENTE", "ADMIN", "SUPERVISOR", "GESTOR"].includes(user.role);
-  const categoria = body.categoria === "PROPOSTA" ? "PROPOSTA" : "GERAL";
+  const categoria = ["PROPOSTA", "COMPRAS"].includes(body.categoria) ? body.categoria : "GERAL";
 
   const comentario = await prisma.comment.create({
     data: {
