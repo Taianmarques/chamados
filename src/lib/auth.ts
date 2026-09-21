@@ -28,6 +28,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!senhaValida) return null;
 
+        await prisma.acessoLog.create({ data: { userId: user.id } });
+
         return {
           id: user.id,
           name: user.name,

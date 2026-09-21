@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import LoginConfigForm from "@/components/admin/LoginConfigForm";
+import AcessosPorUsuario from "@/components/admin/AcessosPorUsuario";
 
 type Usuario = {
   id: string; name: string; email: string; role: string; setor: string | null; ativo: boolean; createdAt: string;
@@ -29,7 +30,7 @@ interface Props {
 }
 
 export default function AdminClient({ usuarios: init, clientes: initClientes, userName, userRole }: Props) {
-  const [tab, setTab] = useState<"usuarios" | "clientes" | "localizacoes" | "login-config">("usuarios");
+  const [tab, setTab] = useState<"usuarios" | "clientes" | "localizacoes" | "acessos" | "login-config">("usuarios");
   const [usuarios, setUsuarios] = useState(init);
   const [clientes, setClientes] = useState(initClientes);
   const [clienteExpandido, setClienteExpandido] = useState<string | null>(null);
@@ -222,11 +223,11 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
         <h1 className="text-xl font-semibold text-gray-900 mb-6">Administração</h1>
 
         <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
-          {(["usuarios", "clientes", "localizacoes", "login-config"] as const).map((t) => (
+          {(["usuarios", "clientes", "localizacoes", "acessos", "login-config"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
             >
-              {t === "usuarios" ? "Usuários" : t === "clientes" ? "Clientes" : t === "localizacoes" ? "Localizações" : "Login"}
+              {t === "usuarios" ? "Usuários" : t === "clientes" ? "Clientes" : t === "localizacoes" ? "Localizações" : t === "acessos" ? "Acessos" : "Login"}
             </button>
           ))}
         </div>
@@ -612,6 +613,13 @@ export default function AdminClient({ usuarios: init, clientes: initClientes, us
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* ── ACESSOS ── */}
+        {tab === "acessos" && (
+          <div className="space-y-6">
+            <AcessosPorUsuario />
           </div>
         )}
 

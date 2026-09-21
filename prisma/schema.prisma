@@ -27,6 +27,7 @@ model User {
   comentarios       Comment[]
   anexos            Attachment[]
   notificacoes      Notification[]
+  acessos           AcessoLog[]
 }
 
 enum Role {
@@ -136,6 +137,15 @@ model Comment {
   autorId   String
   autor     User     @relation(fields: [autorId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model AcessoLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model LoginConfig {
